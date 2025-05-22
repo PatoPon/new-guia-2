@@ -70,6 +70,12 @@ app.get('/api/disciplinas', async (req, res) => {
   res.json(rows)
 })
 
+app.get('/api/temas', async (req, res) => {
+  const [rows] = await pool.query('SELECT * FROM temas')
+  res.json(rows)
+})
+
+
 app.post('/api/disciplinas', async (req, res) => {
   const { nome } = req.body
   await pool.query('INSERT INTO disciplinas (nome) VALUES (?)', [nome])

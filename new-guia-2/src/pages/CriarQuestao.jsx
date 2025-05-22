@@ -14,7 +14,7 @@ const CreateQuestion = () => {
     }
     return null
   }
-    
+
   const savedData = loadFromStorage()
 
   const [titulo, setTitulo] = useState(savedData?.titulo || '')
@@ -26,13 +26,13 @@ const CreateQuestion = () => {
   const [tema, setTema] = useState(savedData?.tema || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [temasFiltrados, setTemasFiltrados] = useState([])
   const [successMsg, setSuccessMsg] = useState(null)
 
-  const handleAlternativaChange = (index, value) => {
-    const novasAlternativas = [...alternativas]
-    novasAlternativas[index] = value
-    setAlternativas(novasAlternativas)
-  }
+  // Novos estados para listas
+  const [listaSeries, setListaSeries] = useState([])
+  const [listaDisciplinas, setListaDisciplinas] = useState([])
+  const [listaTemas, setListaTemas] = useState([])
 
   useEffect(() => {
     const dataToSave = {
@@ -47,13 +47,55 @@ const CreateQuestion = () => {
     localStorage.setItem(storageKey, JSON.stringify(dataToSave))
   }, [titulo, enunciado, alternativas, alternativaCorreta, serie, disciplina, tema])
 
+  useEffect(() => {
+    const fetchDados = async () => {
+      try {
+        const [resSeries, resDisciplinas, resTemas] = await Promise.all([
+          fetch('http://localhost:3001/api/series'),
+          fetch('http://localhost:3001/api/disciplinas'),
+          fetch('http://localhost:3001/api/temas')
+        ])
+
+        const [dataSeries, dataDisciplinas, dataTemas] = await Promise.all([
+          resSeries.json(),
+          resDisciplinas.json(),
+          resTemas.json()
+        ])
+
+        setListaSeries(dataSeries)
+        setListaDisciplinas(dataDisciplinas)
+        setListaTemas(dataTemas)
+      } catch (err) {
+        console.error('Erro ao carregar dados:', err)
+      }
+    }
+
+    fetchDados()
+  }, [])
+
+  useEffect(() => {
+    if (!disciplina) {
+      setTemasFiltrados([])
+      return
+    }
+
+    const temasRelacionados = listaTemas.filter(t => t.disciplina_id === listaDisciplinas.find(d => d.nome === disciplina)?.id)
+    setTemasFiltrados(temasRelacionados)
+  }, [disciplina, listaTemas])
+
+
+  const handleAlternativaChange = (index, value) => {
+    const novasAlternativas = [...alternativas]
+    novasAlternativas[index] = value
+    setAlternativas(novasAlternativas)
+  }
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError(null)
     setSuccessMsg(null)
 
-    // Validação simples
     if (!titulo || !enunciado || alternativas.some(a => !a) || !alternativaCorreta) {
       setError('Preencha todos os campos corretamente')
       setLoading(false)
@@ -61,16 +103,13 @@ const CreateQuestion = () => {
     }
 
     try {
-      const res = await fetch('http://localhost:3001/api/questions',
-         {
+      const res = await fetch('http://localhost:3001/api/questions', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           titulo,
           enunciado,
-          alternativas: JSON.stringify(alternativas), // pois no seu banco é string JSON
+          alternativas: JSON.stringify(alternativas),
           alternativa_correta: alternativaCorreta,
           serie,
           disciplina,
@@ -102,23 +141,12 @@ const CreateQuestion = () => {
 
       <label className="block mb-2">
         Título:
-        <input
-          type="text"
-          value={titulo}
-          onChange={e => setTitulo(e.target.value)}
-          className="w-full p-2 border rounded"
-          required
-        />
+        <input type="text" value={titulo} onChange={e => setTitulo(e.target.value)} className="w-full p-2 border rounded" />
       </label>
 
       <label className="block mb-2">
         Enunciado:
-        <textarea
-          value={enunciado}
-          onChange={e => setEnunciado(e.target.value)}
-          className="w-full p-2 border rounded"
-          required
-        />
+        <textarea value={enunciado} onChange={e => setEnunciado(e.target.value)} className="w-full p-2 border rounded" />
       </label>
 
       <fieldset className="mb-4">
@@ -131,7 +159,6 @@ const CreateQuestion = () => {
               value={alt}
               onChange={e => handleAlternativaChange(idx, e.target.value)}
               className="flex-grow p-2 border rounded"
-              required
             />
           </div>
         ))}
@@ -139,13 +166,8 @@ const CreateQuestion = () => {
 
       <label className="block mb-4">
         Alternativa Correta:
-        <select
-          value={alternativaCorreta}
-          onChange={e => setAlternativaCorreta(e.target.value)}
-          className="w-full p-2 border rounded"
-          required
-        >
-          <option value="">Selecione a alternativa correta</option>
+        <select value={alternativaCorreta} onChange={e => setAlternativaCorreta(e.target.value)} className="w-full p-2 border rounded">
+          <option value="">Selecione</option>
           {alternativas.map((alt, idx) => (
             <option key={idx} value={alt}>
               {String.fromCharCode(65 + idx)}) {alt}
@@ -156,42 +178,38 @@ const CreateQuestion = () => {
 
       <label className="block mb-2">
         Série:
-        <input
-          type="text"
-          value={serie}
-          onChange={e => setSerie(e.target.value)}
-          className="w-full p-2 border rounded"
-        />
+        <select value={serie} onChange={e => setSerie(e.target.value)} className="w-full p-2 border rounded">
+          <option value="">Selecione a série</option>
+          {listaSeries.map(s => (
+            <option key={s.id} value={s.nome}>{s.nome}</option>
+          ))}
+        </select>
       </label>
 
       <label className="block mb-2">
         Disciplina:
-        <input
-          type="text"
-          value={disciplina}
-          onChange={e => setDisciplina(e.target.value)}
-          className="w-full p-2 border rounded"
-        />
+        <select value={disciplina} onChange={e => setDisciplina(e.target.value)} className="w-full p-2 border rounded">
+          <option value="">Selecione a disciplina</option>
+          {listaDisciplinas.map(d => (
+            <option key={d.id} value={d.nome}>{d.nome}</option>
+          ))}
+        </select>
       </label>
 
       <label className="block mb-4">
         Tema:
-        <input
-          type="text"
-          value={tema}
-          onChange={e => setTema(e.target.value)}
-          className="w-full p-2 border rounded"
-        />
+        <select value={tema} onChange={e => setTema(e.target.value)} className="w-full p-2 border rounded">
+          <option value="">Selecione o tema</option>
+          {temasFiltrados.map(t => (
+            <option key={t.id} value={t.nome}>{t.nome}</option>
+          ))}
+        </select>
       </label>
 
       {error && <p className="text-red-600 mb-2">{error}</p>}
       {successMsg && <p className="text-green-600 mb-2">{successMsg}</p>}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-      >
+      <button type="submit" disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50">
         {loading ? 'Salvando...' : 'Salvar Questão'}
       </button>
     </form>
