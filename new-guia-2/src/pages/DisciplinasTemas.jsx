@@ -1,0 +1,172 @@
+import { useEffect, useState } from 'react'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import SortableItem from '../components/SortableItem'
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
+
+const DisciplinasETemas = () => {
+  const [disciplinas, setDisciplinas] = useState(() => {
+    const saved = localStorage.getItem('disciplinas')
+    return saved ? JSON.parse(saved) : []
+  })
+
+  const [temasPorDisciplina, setTemasPorDisciplina] = useState({})
+  const [novaDisciplina, setNovaDisciplina] = useState('')
+  const [novosTemas, setNovosTemas] = useState({})
+
+  const carregarDisciplinasETemas = async () => {
+    let data = disciplinas ? disciplinas : []
+    if (!disciplinas.length) {
+        await fetch('http://localhost:3001/api/disciplinas')
+        .then(res => res.json())
+        .then(data => {
+          setDisciplinas(data)
+          localStorage.setItem('disciplinas', JSON.stringify(data))
+        })
+    } 
+    
+    const temasData = {}
+    for (const d of data) {
+      const resTemas = await fetch(`http://localhost:3001/api/temas/${d.id}`)
+      const temas = await resTemas.json()
+      temasData[d.id] = temas
+    }
+    setTemasPorDisciplina(temasData)
+  }
+
+  useEffect(() => {
+    carregarDisciplinasETemas()
+  }, [])
+
+  const handleAdicionarDisciplina = async () => {
+    if (!novaDisciplina.trim()) return
+    const res = await fetch('http://localhost:3001/api/disciplinas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: Date.now(), nome: novaDisciplina }),
+    })
+    const nova = await res.json()
+    setDisciplinas([...disciplinas, nova])
+    setNovaDisciplina('')
+    carregarDisciplinasETemas()
+  }
+
+  const handleRemoverDisciplina = async (id) => {
+    const confirm = window.confirm('Deseja remover esta disciplina e seus temas?')
+    if (!confirm) return
+    await fetch(`http://localhost:3001/api/disciplinas/${id}`, { method: 'DELETE' })
+    setDisciplinas(prev => prev.filter(d => d.id !== id))
+    const temp = { ...temasPorDisciplina }
+    delete temp[id]
+    setTemasPorDisciplina(temp)
+    carregarDisciplinasETemas()
+  }
+
+  const handleAdicionarTema = async (disciplinaId) => {
+    const nome = novosTemas[disciplinaId]?.trim()
+    if (!nome) return
+
+    const res = await fetch('http://localhost:3001/api/temas', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome, disciplina_id: disciplinaId }),
+    })
+    const novo = await res.json()
+
+    setTemasPorDisciplina(prev => ({
+      ...prev,
+      [disciplinaId]: [...(prev[disciplinaId] || []), novo],
+    }))
+    setNovosTemas({ ...novosTemas, [disciplinaId]: '' })
+    carregarDisciplinasETemas()
+  }
+
+  const handleRemoverTema = async (disciplinaId, temaId) => {
+    const confirm = window.confirm('Deseja remover este tema?')
+    if (!confirm) return
+
+    await fetch(`http://localhost:3001/api/temas/${temaId}`, { method: 'DELETE' })
+    setTemasPorDisciplina(prev => ({
+      ...prev,
+      [disciplinaId]: prev[disciplinaId].filter(t => t.id !== temaId),
+    }))
+    carregarDisciplinasETemas()
+  }
+
+  // Sensores para drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event
+
+    if (active.id !== over.id) {
+      const oldIndex = disciplinas.findIndex(d => d.id === active.id)
+      const newIndex = disciplinas.findIndex(d => d.id === over.id)
+      const newOrder = arrayMove(disciplinas, oldIndex, newIndex)
+      setDisciplinas(newOrder)
+      localStorage.setItem('disciplinas', JSON.stringify(newOrder))
+    }
+  }
+
+  return (
+    <div className="p-6 max-w-3xl mx-auto">
+      <h1 className="text-2xl font-bold mb-6">Disciplinas e Temas</h1>
+
+      <div className="mb-6 flex gap-2">
+        <input
+          value={novaDisciplina}
+          onChange={(e) => setNovaDisciplina(e.target.value)}
+          placeholder="Nova disciplina"
+          className="border p-2 rounded w-full"
+        />
+        <button onClick={handleAdicionarDisciplina} className="bg-blue-500 text-white px-4 py-2 rounded">
+          Adicionar
+        </button>
+      </div>
+
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        modifiers={[restrictToVerticalAxis]}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext
+          items={disciplinas.map(d => d.id)}
+          strategy={verticalListSortingStrategy}
+        >
+          {disciplinas.map((disciplina) => (
+            <SortableItem
+              key={disciplina.id}
+              disciplina={disciplina}
+              temas={temasPorDisciplina[disciplina.id] || []}
+              onRemoverDisciplina={handleRemoverDisciplina}
+              onRemoverTema={handleRemoverTema}
+              onAdicionarTema={handleAdicionarTema}
+              valorNovoTema={novosTemas[disciplina.id] || ''}
+              setValorNovoTema={(v) => setNovosTemas({ ...novosTemas, [disciplina.id]: v })}
+            />
+          ))}
+        </SortableContext>
+      </DndContext>
+    </div>
+  )
+}
+
+export default DisciplinasETemas
