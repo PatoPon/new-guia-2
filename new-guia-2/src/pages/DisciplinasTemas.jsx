@@ -111,6 +111,14 @@ const DisciplinasETemas = () => {
     carregarDisciplinasETemas()
   }
 
+  const handleTemaOrderChange = (disciplinaId, novaOrdemDeTemas) => {
+    setTemasPorDisciplina((prev) => ({
+      ...prev,
+      [disciplinaId]: novaOrdemDeTemas,
+    }))
+  }
+
+
   // Sensores para drag and drop
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -175,6 +183,7 @@ const DisciplinasETemas = () => {
               onAdicionarTema={handleAdicionarTema}
               valorNovoTema={novosTemas[disciplina.id] || ''}
               setValorNovoTema={(v) => setNovosTemas({ ...novosTemas, [disciplina.id]: v })}
+              onTemaOrderChange={handleTemaOrderChange}
             />
           ))}
         </SortableContext>
