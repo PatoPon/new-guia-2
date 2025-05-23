@@ -136,16 +136,24 @@ const DisciplinasETemas = () => {
       <h1 className="text-2xl font-bold mb-6">Disciplinas e Temas</h1>
 
       <div className="mb-6 flex gap-2">
-        <input
-          value={novaDisciplina}
-          onChange={(e) => setNovaDisciplina(e.target.value)}
-          placeholder="Nova disciplina"
-          className="border p-2 rounded w-full"
-        />
-        <button onClick={handleAdicionarDisciplina} className="bg-blue-500 text-white px-4 py-2 rounded">
-          Adicionar
-        </button>
-      </div>
+      <input
+        value={novaDisciplina}
+        onChange={(e) => setNovaDisciplina(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            handleAdicionarDisciplina()
+          }
+        }}
+        placeholder="Nova disciplina"
+        className="border p-2 rounded w-full"
+      />
+      <button
+        onClick={handleAdicionarDisciplina}
+        className="bg-blue-500 text-white px-4 py-2 rounded"
+      >
+        Adicionar
+      </button>
+    </div>
 
       <DndContext
         sensors={sensors}
