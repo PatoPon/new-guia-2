@@ -13,36 +13,37 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
+import { v4 as uuidv4 } from 'uuid'
 import SortableItem from '../components/SortableItem'
 import { restrictToVerticalAxis } from '@dnd-kit/modifiers'
 
 const DisciplinasETemas = () => {
-  const [disciplinas, setDisciplinas] = useState(() => {
-    const saved = localStorage.getItem('disciplinas')
-    return saved ? JSON.parse(saved) : []
-  })
-
+  const [disciplinas, setDisciplinas] = useState([])
   const [temasPorDisciplina, setTemasPorDisciplina] = useState({})
   const [novaDisciplina, setNovaDisciplina] = useState('')
   const [novosTemas, setNovosTemas] = useState({})
 
   const carregarDisciplinasETemas = async () => {
-    let data = disciplinas ? disciplinas : []
-    if (!disciplinas.length) {
-        await fetch('http://localhost:3001/api/disciplinas')
-        .then(res => res.json())
-        .then(data => {
-          setDisciplinas(data)
-          localStorage.setItem('disciplinas', JSON.stringify(data))
-        })
-    } 
-    
-    const temasData = {}
-    for (const d of data) {
-      const resTemas = await fetch(`http://localhost:3001/api/temas/${d.id}`)
-      const temas = await resTemas.json()
-      temasData[d.id] = temas
+    const resDisciplinas = await fetch('http://localhost:3001/api/disciplinas')
+    const dataDisciplinas = await resDisciplinas.json()
+    const ordemSalva = JSON.parse(localStorage.getItem('ordemDisciplinas'))
+
+    if (ordemSalva?.length) {
+      dataDisciplinas.sort((a, b) => ordemSalva.indexOf(a.id) - ordemSalva.indexOf(b.id))
     }
+
+    setDisciplinas(dataDisciplinas)
+
+    const promises = dataDisciplinas.map(d =>
+      fetch(`http://localhost:3001/api/temas/${d.id}`).then(res => res.json())
+    )
+    const temasArrays = await Promise.all(promises)
+
+    const temasData = {}
+    dataDisciplinas.forEach((d, i) => {
+      temasData[d.id] = temasArrays[i]
+    })
+
     setTemasPorDisciplina(temasData)
   }
 
@@ -55,10 +56,11 @@ const DisciplinasETemas = () => {
     const res = await fetch('http://localhost:3001/api/disciplinas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: Date.now(), nome: novaDisciplina }),
+      body: JSON.stringify({ id: uuidv4(), nome: novaDisciplina }),
     })
     const nova = await res.json()
     setDisciplinas([...disciplinas, nova])
+    localStorage.setItem('ordemDisciplinas', JSON.stringify([...disciplinas.map(d => d.id), nova.id]))
     setNovaDisciplina('')
     carregarDisciplinasETemas()
   }
@@ -67,7 +69,11 @@ const DisciplinasETemas = () => {
     const confirm = window.confirm('Deseja remover esta disciplina e seus temas?')
     if (!confirm) return
     await fetch(`http://localhost:3001/api/disciplinas/${id}`, { method: 'DELETE' })
-    setDisciplinas(prev => prev.filter(d => d.id !== id))
+    setDisciplinas(prev => {
+      const novas = prev.filter(d => d.id !== id)
+      localStorage.setItem('ordemDisciplinas', JSON.stringify(novas.map(d => d.id)))
+      return novas
+    })
     const temp = { ...temasPorDisciplina }
     delete temp[id]
     setTemasPorDisciplina(temp)
@@ -121,7 +127,7 @@ const DisciplinasETemas = () => {
       const newIndex = disciplinas.findIndex(d => d.id === over.id)
       const newOrder = arrayMove(disciplinas, oldIndex, newIndex)
       setDisciplinas(newOrder)
-      localStorage.setItem('disciplinas', JSON.stringify(newOrder))
+      localStorage.setItem('ordemDisciplinas', JSON.stringify(newOrder.map(d => d.id)))
     }
   }
 
