@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import ConfirmModal from '../components/ConfirmPop'
 
 const Series = () => {
   const [series, setSeries] = useState([])
@@ -38,17 +37,23 @@ const Series = () => {
   return (
     <div className="p-6">
       <h1 className="text-2xl font-bold mb-4">Cadastrar Séries</h1>
-      <div className="flex gap-2 mb-4">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault()
+          handleAdicionarSerie()
+        }}
+        className="flex gap-2 mb-4"
+      >
         <input
           value={novaSerie}
           onChange={(e) => setNovaSerie(e.target.value)}
           placeholder="Ex: 5º ano"
           className="border p-2 rounded w-full"
         />
-        <button onClick={handleAdicionarSerie} className="bg-blue-500 text-white px-4 py-2 rounded">
+        <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">
           Adicionar
         </button>
-      </div>
+      </form>
 
       <ul className="mt-4 list-disc pl-5">
         {series.map((s) => (

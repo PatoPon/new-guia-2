@@ -60,6 +60,8 @@ const Questions = () => {
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
         onConfirm={confirmDelete}
+        title={"Confirmar Exclusão"}
+        desc={"Você tem certeza que deseja excluir esta questão?"}
       />
     </div>
   )

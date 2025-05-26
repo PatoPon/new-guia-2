@@ -75,7 +75,6 @@ app.get('/api/temas', async (req, res) => {
   res.json(rows)
 })
 
-
 app.post('/api/disciplinas', async (req, res) => {
   const { nome } = req.body
   await pool.query('INSERT INTO disciplinas (nome) VALUES (?)', [nome])
@@ -84,14 +83,76 @@ app.post('/api/disciplinas', async (req, res) => {
 
 app.delete('/api/disciplinas/:id', async (req, res) => {
   const { id } = req.params
-  await pool.query('DELETE FROM disciplinas WHERE id = ?', [id])
-  res.status(204).json({ message: "Deleted discipline" })
+
+  try {
+    const [discRows] = await pool.query('SELECT nome FROM disciplinas WHERE id = ?', [id])
+    if (discRows.length === 0) {
+      return res.status(404).json({ error: "Disciplina não encontrada" })
+    }
+    const nomeDisciplina = discRows[0].nome
+
+    const [questoes] = await pool.query(
+      'SELECT COUNT(*) AS total FROM questions WHERE disciplina = ?',
+      [nomeDisciplina]
+    )
+
+    if (questoes[0].total > 0) {
+      return res.status(400).json({ error: "Não é possível deletar: existem questões com esta disciplina." })
+    }
+
+    await pool.query('DELETE FROM disciplinas WHERE id = ?', [id])
+    res.status(204).send()
+  } catch (err) {
+    console.error('Erro ao deletar disciplina:', err)
+    res.status(500).json({ error: "Erro ao deletar disciplina" })
+  }
 })
 
 app.post('/api/temas', async (req, res) => {
-  const { nome, disciplina_id } = req.body
-  await pool.query('INSERT INTO temas (nome, disciplina_id) VALUES (?, ?)', [nome, disciplina_id])
-  res.status(201).json({ message: "Created theme" })
+  const { nome, disciplina_id, serie_id } = req.body
+
+  if (!nome || !disciplina_id || !serie_id) {
+    return res.status(400).json({ error: "nome, disciplina_id e serie_id são obrigatórios" })
+  }
+
+  try {
+    await pool.query(
+      'INSERT INTO temas (nome, disciplina_id, serie_id) VALUES (?, ?, ?)',
+      [nome, disciplina_id, serie_id]
+    )
+    res.status(201).json({ message: "Tema criado com sucesso" })
+  } catch (err) {
+    console.error('Erro ao adicionar tema:', err)
+    res.status(500).json({ error: "Erro ao adicionar tema" })
+  }
+})
+
+app.put('/api/temas/:id', async (req, res) => {
+  const { id } = req.params
+  const { nome } = req.body
+
+  try {
+    const [temaRows] = await pool.query('SELECT nome FROM temas WHERE id = ?', [id])
+    if (temaRows.length === 0) {
+      return res.status(404).json({ message: "Tema não encontrado" })
+    }
+    const nomeAntigo = temaRows[0].nome
+
+    const result = await pool.query(
+      'UPDATE temas SET nome = ? WHERE id = ?',
+      [nome, id]
+    )
+
+    await pool.query(
+      'UPDATE questions SET tema = ? WHERE tema = ?',
+      [nome, nomeAntigo]
+    )
+
+    res.status(200).json({ message: "Tema e questões atualizados com sucesso" })
+  } catch (error) {
+    console.error('Erro ao atualizar tema:', error)
+    res.status(500).json({ message: "Erro ao atualizar tema" })
+  }
 })
 
 app.get('/api/temas/:disciplinaId', async (req, res) => {
@@ -102,8 +163,29 @@ app.get('/api/temas/:disciplinaId', async (req, res) => {
 
 app.delete('/api/temas/:id', async (req, res) => {
   const { id } = req.params
-  await pool.query('DELETE FROM temas WHERE id = ?', [id])
-  res.status(204).json({ message: "Deleted theme" })
+
+  try {
+    const [temaRows] = await pool.query('SELECT nome FROM temas WHERE id = ?', [id])
+    if (temaRows.length === 0) {
+      return res.status(404).json({ error: "Tema não encontrado" })
+    }
+    const nomeTema = temaRows[0].nome
+
+    const [questoes] = await pool.query(
+      'SELECT COUNT(*) as total FROM questions WHERE tema = ?',
+      [nomeTema]
+    )
+
+    if (questoes[0].total > 0) {
+      return res.status(400).json({ error: "Não é possível deletar: existem questões com este tema." })
+    }
+
+    await pool.query('DELETE FROM temas WHERE id = ?', [id])
+    res.status(204).send()
+  } catch (err) {
+    console.error('Erro ao deletar tema:', err)
+    res.status(500).json({ error: "Erro ao deletar tema" })
+  }
 })
 
 app.get('/api/series', async (req, res) => {
@@ -112,7 +194,7 @@ app.get('/api/series', async (req, res) => {
 })
 
 app.post('/api/series/ordenar', async (req, res) => {
-  const novaOrdem = req.body // Ex: [{id: 3}, {id: 1}, {id: 2}]
+  const novaOrdem = req.body
 
   try {
     for (let i = 0; i < novaOrdem.length; i++) {

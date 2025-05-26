@@ -22,17 +22,34 @@ const DisciplinasETemas = () => {
   const [temasPorDisciplina, setTemasPorDisciplina] = useState({})
   const [novaDisciplina, setNovaDisciplina] = useState('')
   const [novosTemas, setNovosTemas] = useState({})
+  const [filtroSeriePorDisciplina, setFiltroSeriePorDisciplina] = useState({})
 
   const carregarDisciplinasETemas = async () => {
     const resDisciplinas = await fetch('http://localhost:3001/api/disciplinas')
     const dataDisciplinas = await resDisciplinas.json()
     const ordemSalva = JSON.parse(localStorage.getItem('ordemDisciplinas'))
 
+    const resSeries = await fetch('http://localhost:3001/api/series')
+    const listaSeries = await resSeries.json()
+
     if (ordemSalva?.length) {
       dataDisciplinas.sort((a, b) => ordemSalva.indexOf(a.id) - ordemSalva.indexOf(b.id))
     }
 
     setDisciplinas(dataDisciplinas)
+
+    setFiltroSeriePorDisciplina(prev => {
+      const atualizados = { ...prev } // copia o estado atual
+
+      dataDisciplinas.forEach(disciplina => {
+        // só atualiza se não tiver valor definido (null, undefined, vazio)
+        if (!atualizados[disciplina.id]) {
+          atualizados[disciplina.id] = listaSeries[0]?.id || null
+        }
+      })
+
+      return atualizados
+    })
 
     const promises = dataDisciplinas.map(d =>
       fetch(`http://localhost:3001/api/temas/${d.id}`).then(res => res.json())
@@ -87,7 +104,7 @@ const DisciplinasETemas = () => {
     const res = await fetch('http://localhost:3001/api/temas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nome, disciplina_id: disciplinaId }),
+      body: JSON.stringify({ nome: nome, disciplina_id: disciplinaId, serie_id: filtroSeriePorDisciplina[disciplinaId] }),
     })
     const novo = await res.json()
 
@@ -97,6 +114,28 @@ const DisciplinasETemas = () => {
     }))
     setNovosTemas({ ...novosTemas, [disciplinaId]: '' })
     carregarDisciplinasETemas()
+  }
+
+  const handleUpdateTema = async (temaId, disciplinaId, novoNome) => {
+    if (!novoNome.trim()) return
+    const res = await fetch(`http://localhost:3001/api/temas/${temaId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nome: novoNome }),
+    })
+    if (!res.ok) {
+      console.error('Erro ao atualizar tema:', await res.text())
+      return
+    }
+    setTemasPorDisciplina(prev => {
+      const temasAtualizados = prev[disciplinaId].map(t => 
+        t.id === temaId ? { ...t, nome: novoNome } : t
+      )
+      return {
+        ...prev,
+        [disciplinaId]: temasAtualizados,
+      }
+    })
   }
 
   const handleRemoverTema = async (disciplinaId, temaId) => {
@@ -118,6 +157,12 @@ const DisciplinasETemas = () => {
     }))
   }
 
+  const handleFiltroSerieChange = (disciplinaId, serieId) => {
+    setFiltroSeriePorDisciplina({
+      ...filtroSeriePorDisciplina,
+      [disciplinaId]: serieId,
+    })
+  }
 
   // Sensores para drag and drop
   const sensors = useSensors(
@@ -180,10 +225,13 @@ const DisciplinasETemas = () => {
               temas={temasPorDisciplina[disciplina.id] || []}
               onRemoverDisciplina={handleRemoverDisciplina}
               onRemoverTema={handleRemoverTema}
+              onMudarTema={handleUpdateTema}
               onAdicionarTema={handleAdicionarTema}
               valorNovoTema={novosTemas[disciplina.id] || ''}
               setValorNovoTema={(v) => setNovosTemas({ ...novosTemas, [disciplina.id]: v })}
               onTemaOrderChange={handleTemaOrderChange}
+              filtroSerieId={filtroSeriePorDisciplina[disciplina.id]}
+              onFiltroSerieChange={handleFiltroSerieChange}
             />
           ))}
         </SortableContext>

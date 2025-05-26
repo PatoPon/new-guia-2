@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import ConfirmModal from '../components/ConfirmPop'
 
 const storageKey = 'createQuestionFormData'
 
@@ -19,7 +20,7 @@ const CreateQuestion = () => {
 
   const [titulo, setTitulo] = useState(savedData?.titulo || '')
   const [enunciado, setEnunciado] = useState(savedData?.enunciado || '')
-  const [alternativas, setAlternativas] = useState(savedData?.alternativas || ['', '', '', ''])
+  const [alternativas, setAlternativas] = useState(savedData?.alternativas || ['', ''])
   const [alternativaCorreta, setAlternativaCorreta] = useState(savedData?.alternativaCorreta || '')
   const [serie, setSerie] = useState(savedData?.serie || '')
   const [disciplina, setDisciplina] = useState(savedData?.disciplina || '')
@@ -28,6 +29,20 @@ const CreateQuestion = () => {
   const [error, setError] = useState(null)
   const [temasFiltrados, setTemasFiltrados] = useState([])
   const [successMsg, setSuccessMsg] = useState(null)
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false)
+
+  const handleConfirmLimpar = () => {
+    setTitulo('')
+    setEnunciado('')
+    setAlternativas(['', ''])
+    setAlternativaCorreta('')
+    setSerie('')
+    setDisciplina('')
+    setTema('')
+    localStorage.removeItem(storageKey)
+    setIsConfirmModalOpen(false)
+  }
+
 
   // Novos estados para listas
   const [listaSeries, setListaSeries] = useState([])
@@ -74,19 +89,29 @@ const CreateQuestion = () => {
   }, [])
 
   useEffect(() => {
-    if (!disciplina) {
+    if (!disciplina || !serie) {
       setTemasFiltrados([])
       return
     }
 
-    const temasRelacionados = listaTemas.filter(t => t.disciplina_id === listaDisciplinas.find(d => d.nome === disciplina)?.id)
-    setTemasFiltrados(temasRelacionados)
-  }, [disciplina, listaTemas])
+    const disciplinaSelecionada = listaDisciplinas.find(d => d.nome === disciplina)
+    const serieSelecionada = listaSeries.find(s => s.nome === serie)
+
+    const temasFiltrados = listaTemas.filter(t => 
+      t.serie_id === serieSelecionada?.id &&
+      t.disciplina_id === disciplinaSelecionada?.id
+    )
+
+    setTemasFiltrados(temasFiltrados)
+  }, [disciplina, serie, listaTemas])
 
 
   const handleAlternativaChange = (index, value) => {
     const novasAlternativas = [...alternativas]
     novasAlternativas[index] = value
+    if (!novasAlternativas.includes(alternativaCorreta)) {
+      setAlternativaCorreta('')
+    }
     setAlternativas(novasAlternativas)
   }
 
@@ -123,7 +148,7 @@ const CreateQuestion = () => {
       setSuccessMsg('Questão criada com sucesso!')
       setTitulo('')
       setEnunciado('')
-      setAlternativas(['', '', '', ''])
+      setAlternativas(['', ''])
       setAlternativaCorreta('')
       setSerie('')
       setDisciplina('')
@@ -160,14 +185,33 @@ const CreateQuestion = () => {
               onChange={e => handleAlternativaChange(idx, e.target.value)}
               className="flex-grow p-2 border rounded"
             />
+            {alternativas.length > 2 && (
+              <button
+                type="button"
+                onClick={() => {
+                  const novas = alternativas.filter((_, i) => i !== idx)
+                  setAlternativas(novas)
+                }}
+                className="text-red-600 hover:underline"
+              >
+                Remover
+              </button>
+            )}
           </div>
         ))}
+        <button
+          type="button"
+          onClick={() => setAlternativas([...alternativas, ''])}
+          className="mt-2 text-blue-600 underline"
+        >
+          + Adicionar alternativa
+        </button>
       </fieldset>
 
       <label className="block mb-4">
         Alternativa Correta:
         <select value={alternativaCorreta} onChange={e => setAlternativaCorreta(e.target.value)} className="w-full p-2 border rounded">
-          <option value="">Selecione</option>
+          <option value="" disabled>Selecione</option>
           {alternativas.map((alt, idx) => (
             <option key={idx} value={alt}>
               {String.fromCharCode(65 + idx)}) {alt}
@@ -179,7 +223,7 @@ const CreateQuestion = () => {
       <label className="block mb-2">
         Série:
         <select value={serie} onChange={e => setSerie(e.target.value)} className="w-full p-2 border rounded">
-          <option value="">Selecione a série</option>
+          <option value="" disabled>Selecione a série</option>
           {listaSeries.map(s => (
             <option key={s.id} value={s.nome}>{s.nome}</option>
           ))}
@@ -189,7 +233,7 @@ const CreateQuestion = () => {
       <label className="block mb-2">
         Disciplina:
         <select value={disciplina} onChange={e => setDisciplina(e.target.value)} className="w-full p-2 border rounded">
-          <option value="">Selecione a disciplina</option>
+          <option value="" disabled>Selecione a disciplina</option>
           {listaDisciplinas.map(d => (
             <option key={d.id} value={d.nome}>{d.nome}</option>
           ))}
@@ -199,7 +243,7 @@ const CreateQuestion = () => {
       <label className="block mb-4">
         Tema:
         <select value={tema} onChange={e => setTema(e.target.value)} className="w-full p-2 border rounded">
-          <option value="">Selecione o tema</option>
+          <option value="" disabled>Selecione o tema</option>
           {temasFiltrados.map(t => (
             <option key={t.id} value={t.nome}>{t.nome}</option>
           ))}
@@ -212,6 +256,22 @@ const CreateQuestion = () => {
       <button type="submit" disabled={loading} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50">
         {loading ? 'Salvando...' : 'Salvar Questão'}
       </button>
+
+      <button
+        type="button"
+        onClick={() => setIsConfirmModalOpen(true)}
+        className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 ml-2"
+      >
+        Limpar
+      </button>
+
+      <ConfirmModal
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={handleConfirmLimpar}
+        title="Limpar Formulário"
+        desc="Você tem certeza que deseja limpar o formulário?"
+      />
     </form>
   )
 }

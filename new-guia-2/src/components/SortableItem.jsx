@@ -13,18 +13,25 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { GripVertical, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import InputModal from './InputPop'
 
 export const SortableItem = ({
   disciplina,
   temas,
   onRemoverDisciplina,
   onRemoverTema,
+  onMudarTema,
   onAdicionarTema,
   valorNovoTema,
   setValorNovoTema,
   onTemaOrderChange,
+  filtroSerieId: filtroSerieIdProp,
+  onFiltroSerieChange
 }) => {
+  const [series, setSeries] = useState([])
+  const [filtroSerieId, setFiltroSerieId] = useState(filtroSerieIdProp || '')
+
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: disciplina.id })
 
@@ -39,13 +46,17 @@ export const SortableItem = ({
     })
   )
 
+  const temasFiltrados = filtroSerieId
+  ? temas.filter((tema) => tema.serie_id === filtroSerieId)
+  : temas
+
   const handleTemaDragEnd = (event) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
 
-    const oldIndex = temas.findIndex((t) => t.id === active.id)
-    const newIndex = temas.findIndex((t) => t.id === over.id)
-    const novaOrdem = arrayMove(temas, oldIndex, newIndex)
+    const oldIndex = temasFiltrados.findIndex((t) => t.id === active.id)
+    const newIndex = temasFiltrados.findIndex((t) => t.id === over.id)
+    const novaOrdem = arrayMove(temasFiltrados, oldIndex, newIndex)
 
     onTemaOrderChange(disciplina.id, novaOrdem)
   }
@@ -55,6 +66,27 @@ export const SortableItem = ({
       onAdicionarTema(disciplina.id)
     }
   }
+
+  useEffect(() => {
+    const carregarSeries = async () => {
+      const res = await fetch('http://localhost:3001/api/series')
+      const data = await res.json()
+      setSeries(data)
+
+      if (!filtroSerieIdProp && data.length > 0) {
+        setFiltroSerieId(data[0].id)
+        onFiltroSerieChange(disciplina.id, data[0].id)
+      }
+    }
+
+    carregarSeries()
+  }, [])
+
+  useEffect(() => {
+    if (filtroSerieIdProp !== undefined && filtroSerieIdProp !== filtroSerieId) {
+      setFiltroSerieId(filtroSerieIdProp)
+    }
+  }, [filtroSerieIdProp])
 
   return (
     <li
@@ -81,21 +113,39 @@ export const SortableItem = ({
         </button>
       </div>
 
+      <select
+        className="border rounded p-1 ml-2 text-sm"
+        value={filtroSerieId || ''}
+        onChange={(e) => {
+          const novoValor = parseInt(e.target.value)
+          setFiltroSerieId(novoValor)
+          onFiltroSerieChange(disciplina.id, novoValor)
+        }}
+      >
+        {series.map(serie => (
+          <option key={serie.id} value={serie.id}>
+            {serie.nome}
+          </option>
+        ))}
+      </select>
+
+
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={handleTemaDragEnd}
       >
         <SortableContext
-          items={temas.map((tema) => tema.id)}
+          items={temasFiltrados.map((tema) => tema.id)}
           strategy={verticalListSortingStrategy}
         >
           <ul className="list-disc list-inside space-y-1 pl-4">
-            {temas.map((tema) => (
+            {temasFiltrados.map((tema) => (
               <TemaItem
                 key={tema.id}
                 tema={tema}
                 disciplinaId={disciplina.id}
+                onMudarTema={onMudarTema}
                 onRemoverTema={onRemoverTema}
               />
             ))}
@@ -122,9 +172,15 @@ export const SortableItem = ({
   )
 }
 
-const TemaItem = ({ tema, disciplinaId, onRemoverTema }) => {
+const TemaItem = ({ tema, disciplinaId, onMudarTema, onRemoverTema }) => {
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: tema.id })
+
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const handleSubmit = (novoNome) => {
+    onMudarTema(tema.id, tema.disciplina_id, novoNome)
+  }
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -147,6 +203,21 @@ const TemaItem = ({ tema, disciplinaId, onRemoverTema }) => {
         </button>
         <span>{tema.nome}</span>
       </div>
+      <button
+        onClick={() => setIsModalOpen(true)}
+        className="text-sm text-red-500 hover:text-red-700"
+      >
+        Editar
+      </button>
+
+      <InputModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleSubmit}
+        defaultValue={tema.nome}
+        placeholder={tema.nome}
+      />
+
       <button
         onClick={() => onRemoverTema(disciplinaId, tema.id)}
         className="text-sm text-red-500 hover:text-red-700"
