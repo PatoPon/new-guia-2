@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import ConfirmModal from '../components/ConfirmPop'
+import WordEditor from '../components/WordEditor'
 
 const storageKey = 'createQuestionFormData'
 
@@ -169,10 +170,8 @@ const CreateQuestion = () => {
         <input type="text" value={titulo} onChange={e => setTitulo(e.target.value)} className="w-full p-2 border rounded" />
       </label>
 
-      <label className="block mb-2">
         Enunciado:
-        <textarea value={enunciado} onChange={e => setEnunciado(e.target.value)} className="w-full p-2 border rounded" />
-      </label>
+        <WordEditor />
 
       <fieldset className="mb-4">
         <legend className="font-semibold mb-2">Alternativas:</legend>
