@@ -39,6 +39,30 @@ const WordEditor = () => {
 
       const html = clipboardData.getData('text/html');
       const items = clipboardData.items;
+      for (const item of event.clipboardData.items) {
+        if (item.type === 'text/html') {
+          item.getAsString((html) => {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const img = doc.querySelector('img');
+
+            if (img) {
+              const src = img.src;
+              if (src.startsWith('data:image')) {
+                console.log('Imagem embutida em base64:', src);
+                // Aqui você pode converter para File se quiser
+              } else if (src.startsWith('file://')) {
+                console.warn('Imagem local não acessível:', src);
+              } else {
+                console.log('Imagem externa:', src);
+              }
+            }
+          });
+        }
+      }
+
+      const boco = Array.from(event.clipboardData?.items || []);
+      console.log(boco)
 
       if (html) {
         const container = document.createElement('div');

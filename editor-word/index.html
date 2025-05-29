@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="pt-BR" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <title>Editor estilo Word com Tiptap</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 1.5rem;
+      font-family: 'Inter', sans-serif;
+      background-color: #f9fafb;
+    }
+    #editor {
+      width: 794px;    /* Largura aproximada da folha A4 em pixels */
+      height: 1123px;  /* Altura aproximada da folha A4 em pixels */
+      margin: 2rem auto; /* Centraliza horizontalmente e dá espaço em cima/baixo */
+      background-color: white;
+      box-shadow: 0 0 10px rgb(0 0 0 / 0.1);
+      border: 1px solid #ccc;
+      padding: 2rem;
+      overflow-y: auto; /* Pra poder rolar o conteúdo caso fique longo */
+      box-sizing: border-box;
+      /* Mantém o min-height pra evitar encolher demais */
+      min-height: 24rem;
+    }
+    #editor h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    #editor h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+    #editor ul {
+      list-style-type: disc;
+      margin-left: 1.5rem;
+    }
+    #editor ol {
+      list-style-type: decimal;
+      margin-left: 1.5rem;
+    }
+    #editor p {
+      margin-bottom: 0.75rem;
+    }
+    #editor table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    #editor td, #editor th {
+      padding: 0.5rem;
+    }
+
+    .ProseMirror {
+      white-space: pre-wrap !important;   /* já tem no seu editor, mantém espaços e quebras */
+      word-break: break-word !important;  /* quebra palavras longas para evitar overflow */
+      overflow-wrap: break-word !important; /* suporte adicional para quebra de palavra */
+      outline: 2px ridge rgb(255, 140, 0) !important;
+      border-radius: 5px !important; /* destaque para o editor */
+    }
+
+
+    #editor table[style] {
+      all: revert;
+      max-width: 100%;
+      display: table;
+      margin-left: auto;
+      margin-right: auto;
+      border-collapse: collapse; /* junta as bordas da tabela */
+      table-layout: fixed; /* controla largura das colunas */
+      max-width: 82%; /* garante que a tabela ocupe todo o container */
+    }
+
+    #editor table[style] tr {
+      display: table-row;
+    }
+
+    #editor table[style] td,
+    #editor table[style] th {
+      display: table-cell;
+      padding: 8px;
+      vertical-align: middle;
+      word-break: break-word; /* quebra texto grande */
+      min-width: 20px; /* evita células com largura zero */
+    }
+
+    #editor img[style] {
+      all: revert;
+      max-width: 100%;
+      display: block;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    #editor p[style], #editor div[style] {
+      all: revert;
+      text-align: inherit !important;
+    }
+
+    .is-aligned-left {
+      text-align: left;
+    }
+
+    .is-aligned-center {
+      text-align: center;
+    }
+
+    .is-aligned-right {
+      text-align: right;
+    }
+
+    .is-aligned-justify {
+      text-align: justify;
+    }
+
+    .ProseMirror td[style],
+    .ProseMirror img[style],
+    .ProseMirror p[style] {
+      all: unset;
+    }
+
+  </style>
+</head>
+<body>
+
+  <div class="flex flex-wrap gap-2 mb-4">
+    <button id="boldBtn" class="p-2 rounded hover:bg-blue-600 hover:text-white transition focus:outline-none" aria-label="Negrito">
+      <i data-lucide="bold" class="w-5 h-5"></i>
+    </button>
+    <button id="italicBtn" class="p-2 rounded hover:bg-blue-600 hover:text-white transition focus:outline-none" aria-label="Itálico">
+      <i data-lucide="italic" class="w-5 h-5"></i>
+    </button>
+    <button id="underlineBtn" class="p-2 rounded hover:bg-blue-600 hover:text-white transition focus:outline-none" aria-label="Sublinhado">
+      <i data-lucide="underline" class="w-5 h-5"></i>
+    </button>
+    <button id="strikeBtn" class="p-2 rounded hover:bg-blue-600 hover:text-white transition focus:outline-none" aria-label="Tachado">
+      <i data-lucide="strikethrough" class="w-5 h-5"></i>
+    </button>
+    <button id="bulletListBtn" class="p-2 rounded hover:bg-blue-600 hover:text-white transition focus:outline-none" aria-label="Lista">
+      <i data-lucide="list" class="w-5 h-5"></i>
+    </button>
+    <button id="orderedListBtn" class="p-2 rounded hover:bg-blue-600 hover:text-white transition focus:outline-none" aria-label="Lista Numerada">
+      <i data-lucide="list-ordered" class="w-5 h-5"></i>
+    </button>
+    <button id="heading1Btn" class="p-2 rounded hover:bg-blue-600 hover:text-white transition focus:outline-none" aria-label="Título 1">
+      <i data-lucide="heading-1" class="w-5 h-5"></i>
+    </button>
+    <button id="heading2Btn" class="p-2 rounded hover:bg-blue-600 hover:text-white transition focus:outline-none" aria-label="Título 2">
+      <i data-lucide="heading-2" class="w-5 h-5"></i>
+    </button>
+    <button id="alignLeftBtn" class="p-2 rounded hover:bg-blue-600 hover:text-white transition focus:outline-none" aria-label="Alinhar à Esquerda">
+      <i data-lucide="align-left" class="w-5 h-5"></i>
+    </button>
+    <button id="alignCenterBtn" class="p-2 rounded hover:bg-blue-600 hover:text-white transition focus:outline-none" aria-label="Centralizar">
+      <i data-lucide="align-center" class="w-5 h-5"></i>
+    </button>
+    <button id="alignRightBtn" class="p-2 rounded hover:bg-blue-600 hover:text-white transition focus:outline-none" aria-label="Alinhar à Direita">
+      <i data-lucide="align-right" class="w-5 h-5"></i>
+    </button>
+    <button id="alignJustifyBtn" class="p-2 rounded hover:bg-blue-600 hover:text-white transition focus:outline-none" aria-label="Justificar">
+      <i data-lucide="align-justify" class="w-5 h-5"></i>
+    </button>
+    <button id="undoBtn" class="p-2 rounded hover:bg-gray-600 hover:text-white transition focus:outline-none" aria-label="Desfazer">
+      <i data-lucide="undo" class="w-5 h-5"></i>
+    </button>
+    <button id="redoBtn" class="p-2 rounded hover:bg-gray-600 hover:text-white transition focus:outline-none" aria-label="Refazer">
+      <i data-lucide="redo" class="w-5 h-5"></i>
+    </button>
+    <button id="insertRectangleBtn" class="p-2 rounded hover:bg-gray-600 hover:text-white transition focus:outline-none" aria-label="Inserir Retângulo">
+      <i data-lucide="square" class="w-5 h-5"></i>
+    </button>
+  </div>
+
+  <div
+    id="editor"
+    class="max-w-full bg-white p-4 rounded shadow-md border border-gray-300 min-h-[24rem] focus:outline-none"
+    tabindex="0"
+  ></div>
+
+  <label class="block mb-2">
+    Título:
+    <input
+      type="text"
+      id="inputTitulo"
+      class="w-full p-2 border rounded"
+      placeholder="Digite o título da questão"
+    />
+  </label>
+
+  <fieldset class="mb-4" id="fieldsetAlternativas">
+    <legend class="font-semibold mb-2">Alternativas:</legend>
+  </fieldset>
+
+  <button
+    type="button"
+    id="btnAddAlternativa"
+    class="mb-4 text-blue-600 underline"
+  >
+    + Adicionar alternativa
+  </button>
+
+  <label class="block mb-4">
+    Alternativa Correta:
+    <select id="selectAlternativaCorreta" class="w-full p-2 border rounded">
+      <option value="" disabled selected>Selecione</option>
+    </select>
+  </label>
+
+  <label class="block mb-2">
+    Série:
+    <select id="selectSerie" class="w-full p-2 border rounded">
+      <option value="" disabled selected>Selecione a série</option>
+      <!-- Opções inseridas pelo JS -->
+    </select>
+  </label>
+
+  <label class="block mb-2">
+    Disciplina:
+    <select id="selectDisciplina" class="w-full p-2 border rounded">
+      <option value="" disabled selected>Selecione a disciplina</option>
+      <!-- Opções inseridas pelo JS -->
+    </select>
+  </label>
+
+  <label class="block mb-4">
+    Tema:
+    <select id="selectTema" class="w-full p-2 border rounded">
+      <option value="" disabled selected>Selecione o tema</option>
+      <!-- Opções inseridas pelo JS -->
+    </select>
+  </label>
+
+  <button id="btnEnviar" class="w-full p-3 bg-blue-600 text-white rounded cursor-pointer">
+    Enviar Questão
+  </button>
+
+  <script>
+    lucide.createIcons();
+  </script>
+  <script src="renderer.js"></script>
+</body>
+</html>
