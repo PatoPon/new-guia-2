@@ -191,24 +191,42 @@
     />
   </label>
 
-  <fieldset class="mb-4" id="fieldsetAlternativas">
-    <legend class="font-semibold mb-2">Alternativas:</legend>
-  </fieldset>
+  <div>
+    <button id="mudarObjetiva" class="focus:outline-none text-white bg-purple-700 hover:bg-purple-800 focus:ring-4 focus:ring-purple-300 font-medium rounded-lg text-sm px-5 py-2.5 mb-2 dark:bg-purple-600 dark:hover:bg-purple-700 dark:focus:ring-purple-900" aria-label="Inserir Retângulo">
+      Objetiva
+    </button>
+    <button id="mudarDiscursiva" class="focus:outline-none text-white bg-purple-700 hover:bg-purple-800 focus:ring-4 focus:ring-purple-300 font-medium rounded-lg text-sm px-5 py-2.5 mb-2 dark:bg-purple-600 dark:hover:bg-purple-700 dark:focus:ring-purple-900" aria-label="Inserir Retângulo">
+      Discursiva
+    </button>
+  </div>
 
-  <button
-    type="button"
-    id="btnAddAlternativa"
-    class="mb-4 text-blue-600 underline"
-  >
-    + Adicionar alternativa
-  </button>
+  <div id="containerObjetiva" class="mb-4">
+    <fieldset class="mb-4" id="fieldsetAlternativas">
+      <legend class="font-semibold mb-2">Alternativas:</legend>
+    </fieldset>
 
-  <label class="block mb-4">
-    Alternativa Correta:
-    <select id="selectAlternativaCorreta" class="w-full p-2 border rounded">
-      <option value="" disabled selected>Selecione</option>
-    </select>
-  </label>
+    <button
+      type="button"
+      id="btnAddAlternativa"
+      class="mb-4 text-blue-600 underline"
+    >
+      + Adicionar alternativa
+    </button>
+
+    <label class="block mb-4">
+      Alternativa Correta:
+      <select id="selectAlternativaCorreta" class="w-full p-2 border rounded">
+        <option value="" disabled selected>Selecione</option>
+      </select>
+    </label>
+  </div>
+
+  <div id="containerDiscursiva" class="mb-4 hidden">
+    <label class="block mb-2">
+      Gabarito:
+      <input type="text" id="gabaritoDiscursiva" class="w-full p-2 border rounded" />
+    </label>
+  </div>
 
   <label class="block mb-2">
     Série:

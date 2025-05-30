@@ -25,23 +25,44 @@ app.post('/api/questions', async (req, res) => {
     enunciado,
     alternativas,
     alternativa_correta,
+    gabarito,
+    tipo,
     serie,
     disciplina,
     tema
   } = req.body
 
-  if (
-    !titulo || !enunciado || !alternativas || !alternativa_correta ||
-    !serie || !disciplina || !tema
-  ) {
-    return res.status(400).json({ error: 'Todos os campos são obrigatórios' })
+  if (!titulo || !enunciado || !tipo || !serie || !disciplina || !tema) {
+    return res.status(400).json({ error: 'Campos obrigatórios ausentes' })
+  }
+
+  if (tipo === 'objetiva') {
+    if (!alternativas || !alternativa_correta) {
+      return res.status(400).json({ error: 'Alternativas e alternativa correta são obrigatórias para questões objetivas' })
+    }
+  } else if (tipo === 'discursiva') {
+    if (!gabarito) {
+      return res.status(400).json({ error: 'Gabarito é obrigatório para questões discursivas' })
+    }
+  } else {
+    return res.status(400).json({ error: 'Tipo de questão inválido' })
   }
 
   try {
     const [result] = await pool.query(
-      `INSERT INTO questions (titulo, enunciado, alternativas, alternativa_correta, serie, disciplina, tema)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [titulo, enunciado, alternativas, alternativa_correta, serie, disciplina, tema]
+      `INSERT INTO questions (titulo, enunciado, alternativas, alternativa_correta, gabarito, tipo, serie, disciplina, tema)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        titulo,
+        enunciado,
+        tipo === 'objetiva' ? alternativas : null,
+        tipo === 'objetiva' ? alternativa_correta : null,
+        tipo === 'discursiva' ? gabarito : null,
+        tipo,
+        serie,
+        disciplina,
+        tema
+      ]
     )
 
     res.status(201).json({ id: result.insertId, message: 'Questão criada com sucesso' })
@@ -214,7 +235,6 @@ app.post('/api/series', async (req, res) => {
   }
 
   try {
-    // Para adicionar no final, buscamos o maior valor de ordem atual:
     const [[{ maxOrdem }]] = await pool.query('SELECT MAX(ordem) as maxOrdem FROM series')
     const novaOrdem = (maxOrdem || 0) + 1
 
@@ -223,7 +243,6 @@ app.post('/api/series', async (req, res) => {
       [nome.trim(), novaOrdem]
     )
 
-    // Retorna a série criada com id e ordem
     res.status(201).json({
       id: result.insertId,
       nome: nome.trim(),
@@ -238,13 +257,11 @@ app.delete('/api/series/:id', async (req, res) => {
   const { id } = req.params
 
   try {
-    // Verifica se a série existe
     const [[serie]] = await pool.query('SELECT * FROM series WHERE id = ?', [id])
     if (!serie) {
       return res.status(404).json({ error: 'Série não encontrada' })
     }
 
-    // Deleta a série
     await pool.query('DELETE FROM series WHERE id = ?', [id])
 
     res.status(200).json({ message: 'Série removida com sucesso' })

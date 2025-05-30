@@ -115,7 +115,7 @@ const editor = new Editor({
         types: ['heading', 'paragraph', 'listItem', 'customParagraph'], // aplique para os tipos desejados
     }),
   ],
-  content: '<p>Comece a digitar...</p>',
+  content: '<p> </p>',
   editorProps: {
     attributes: {
       class: 'ProseMirror',
@@ -150,11 +150,9 @@ function updateToolbar() {
   })
 }
 
-// Liga o evento para atualizar toolbar toda vez que o conteúdo muda
 editor.on('update', updateToolbar)
 editor.on('selectionUpdate', updateToolbar)
 
-// Adiciona eventos dos botões para aplicar comandos
 document.getElementById('boldBtn').addEventListener('click', () => {
   editor.chain().focus().toggleBold().run()
 })
@@ -197,11 +195,9 @@ document.getElementById('alignCenterBtn').addEventListener('click', () => {
 document.getElementById('alignRightBtn').addEventListener('click', () => {
   editor.chain().focus().setTextAlign('right').run()
 })
-
 document.getElementById('alignJustifyBtn').addEventListener('click', () => {
   editor.chain().focus().setTextAlign('justify').run()
 })
-
 document.getElementById('insertRectangleBtn').addEventListener('click', () => {
   editor.chain().focus().insertContent({
     type: 'rectangleShape',
@@ -233,7 +229,6 @@ function renderAlternativas() {
         class="flex-grow p-2 border rounded"
       />
     `
-    // Só mostra botão "Remover" se houver mais de 2 alternativas
     if (alternativas.length > 2) {
       html += `
         <button
@@ -252,7 +247,6 @@ function renderAlternativas() {
 
   updateSelectAlternativas()
 
-  // Atualiza texto da alternativa
   document.querySelectorAll('input[data-idx]').forEach(input => {
     input.addEventListener('input', e => {
       const i = parseInt(e.target.dataset.idx)
@@ -261,7 +255,6 @@ function renderAlternativas() {
     })
   })
 
-  // Remove alternativa se houver mais de 2
   document.querySelectorAll('button[data-remove]').forEach(button => {
     button.addEventListener('click', e => {
       if (alternativas.length <= 2) return
@@ -296,7 +289,7 @@ function initAlternativas() {
 }
 
 selectAlternativaCorreta.addEventListener('change', e => {
-  alternativaCorreta = e.target.value
+  alternativaCorreta = selectAlternativaCorreta.value
 })
 
 btnAddAlternativa.addEventListener('click', () => {
@@ -347,7 +340,6 @@ function atualizarDisciplinas() {
   const disciplinasFiltradas = listaDisciplinas;
 
   preencherSelect('selectDisciplina', disciplinasFiltradas);
-  // Reseta e desativa o tema
   document.getElementById('selectTema').innerHTML = `<option value="" disabled selected>Selecione o tema</option>`;
   document.getElementById('selectTema').disabled = true;
 }
@@ -379,6 +371,29 @@ document.getElementById('selectDisciplina').addEventListener('change', atualizar
 
 window.addEventListener('DOMContentLoaded', carregarDados);
 
+const btnDiscursiva = document.getElementById('mudarDiscursiva');
+const btnObjetiva = document.getElementById('mudarObjetiva');
+const containerObjetiva = document.getElementById('containerObjetiva');
+const containerDiscursiva = document.getElementById('containerDiscursiva');
+
+let tipoQuestao = 'objetiva';
+
+btnDiscursiva.addEventListener('click', () => {
+  tipoQuestao = 'discursiva';
+  containerObjetiva.classList.add('hidden');
+  containerDiscursiva.classList.remove('hidden');
+  fieldsetAlternativas.classList.add('hidden');
+  btnAddAlternativa.classList.add('hidden');
+});
+
+btnObjetiva.addEventListener('click', () => {
+  tipoQuestao = 'objetiva';
+  containerObjetiva.classList.remove('hidden');
+  containerDiscursiva.classList.add('hidden');
+  fieldsetAlternativas.classList.remove('hidden');
+  btnAddAlternativa.classList.remove('hidden');
+});
+
 btnEnviar.addEventListener('click', async () => {
   const titulo = document.getElementById('inputTitulo').value.trim();
   const enunciado = document.getElementById('editor').innerHTML.trim();
@@ -387,19 +402,35 @@ btnEnviar.addEventListener('click', async () => {
   const tema = selectTema.value;
 
   if (!titulo) return alert('Preencha o título');
+  if (!enunciado) return alert('Preencha o enunciado');
   if (alternativas.length < 2 || alternativas.some(a => !a.trim())) return alert('Preencha ao menos 2 alternativas válidas');
   if (!alternativaCorreta) return alert('Selecione a alternativa correta');
   if (!serie || !disciplina || !tema) return alert('Selecione série, disciplina e tema');
 
-  const bodyToSend = {
+  let bodyToSend = {
     titulo,
     enunciado,
-    alternativas: JSON.stringify(alternativas), // convertendo array para string
-    alternativa_correta: alternativaCorreta,
     serie,
     disciplina,
-    tema
+    tema,
+    tipo: tipoQuestao,
   };
+
+  if (tipoQuestao === 'objetiva') {
+    if (alternativas.length < 2 || alternativas.some(a => !a.trim())) {
+      return alert('Preencha ao menos 2 alternativas válidas');
+    }
+    if (!alternativaCorreta) {
+      return alert('Selecione a alternativa correta');
+    }
+
+    bodyToSend.alternativas = JSON.stringify(alternativas);
+    bodyToSend.alternativa_correta = alternativaCorreta;
+  } else if (tipoQuestao === 'discursiva') {
+    const gabarito = document.getElementById('gabaritoDiscursiva').value.trim();
+    if (!gabarito) return alert('Preencha o gabarito da questão discursiva');
+    bodyToSend.gabarito = gabarito;
+  }
 
   try {
     const res = await fetch('http://localhost:3001/api/questions', {
@@ -448,6 +479,4 @@ editor.view.dom.addEventListener('paste', (event) => {
       return
     }
   }
-
-
 })
