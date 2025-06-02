@@ -1,8 +1,10 @@
 const QuestionCard = ({ question, selected, onSelect, onDelete }) => {
   // Parseia as alternativas que estão em string para array
   let alternativasArray = [];
+
   try {
-    alternativasArray = JSON.parse(question.alternativas);
+    const parsed = JSON.parse(question?.alternativas ?? '[]');
+    alternativasArray = Array.isArray(parsed) ? parsed : [];
   } catch (e) {
     alternativasArray = [];
   }
@@ -18,7 +20,11 @@ const QuestionCard = ({ question, selected, onSelect, onDelete }) => {
           X
         </button>
       </div>
-      <p className="font-medium">Enunciado: {question.enunciado}</p>
+      <p className="font-medium">Enunciado:</p>
+      <div
+        className="[&_img]:block [&_img]:max-w-full [&_img]:h-auto"
+        dangerouslySetInnerHTML={{ __html: question.enunciado }}
+      />
       <ul className="text-sm list-disc mt-2 text-gray-700">
         <ul className="list-none p-0 m-0 text-sm mt-2 text-gray-700">
           <ul className="list-none p-0 m-0 text-sm mt-2 text-gray-700">
@@ -35,6 +41,11 @@ const QuestionCard = ({ question, selected, onSelect, onDelete }) => {
                   )}
                 </li>
               ))
+            ) : question.gabarito ? (
+              <li>
+                <span className="font-bold text-green-600">Gabarito:</span>{' '}
+                <span className="text-gray-700">{question.gabarito}</span>
+              </li>
             ) : (
               <li>Sem opções disponíveis</li>
             )}

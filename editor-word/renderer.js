@@ -403,8 +403,8 @@ btnEnviar.addEventListener('click', async () => {
 
   if (!titulo) return alert('Preencha o título');
   if (!enunciado) return alert('Preencha o enunciado');
-  if (alternativas.length < 2 || alternativas.some(a => !a.trim())) return alert('Preencha ao menos 2 alternativas válidas');
-  if (!alternativaCorreta) return alert('Selecione a alternativa correta');
+  if ((alternativas.length < 2 || alternativas.some(a => !a.trim())) && tipoQuestao === "objetiva" ) return alert('Preencha ao menos 2 alternativas válidas');
+  if (!alternativaCorreta && tipoQuestao === "objetiva") return alert('Selecione a alternativa correta');
   if (!serie || !disciplina || !tema) return alert('Selecione série, disciplina e tema');
 
   let bodyToSend = {
