@@ -2,12 +2,92 @@ import express from 'express'
 import cors from 'cors'
 import pool from './db.js'
 import dotenv from 'dotenv'
+import multer from 'multer'
+import path from 'path'
+import fs from 'fs'
+import { exec } from 'child_process';
+
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const upload = multer({ dest: 'uploads/' });
+const outputDir = path.join(__dirname, 'converted');
 
 dotenv.config()
 
 const app = express()
 app.use(cors())
+app.use(express.static(path.join(__dirname, 'public')));
+app.use('/converted', express.static(path.resolve('converted')));
 app.use(express.json())
+
+if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
+
+app.post('/upload', upload.single('docxFile'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).send('Nenhum arquivo enviado.');
+  }
+
+  const arquivoDocx = req.file.path;
+  const pastaDestino = path.resolve('converted');
+
+  if (!fs.existsSync(pastaDestino)) {
+    fs.mkdirSync(pastaDestino);
+  }
+
+  const pathToSoffice = `"C:\\Program Files\\LibreOffice\\program\\soffice.exe"`;
+
+  const comando = `${pathToSoffice} --headless --convert-to html:"HTML (StarWriter)" "${arquivoDocx}" --outdir "${pastaDestino}"`;
+
+  exec(comando, (error, stdout, stderr) => {
+    if (error) {
+      console.error('Erro na conversão:', error);
+      return res.status(500).send('Erro ao converter o arquivo.');
+    }
+
+    // Lista arquivos da pasta converted para pegar o nome gerado
+    fs.readdir(pastaDestino, (err, files) => {
+      if (err) {
+        console.error('Erro lendo pasta converted:', err);
+        return res.status(500).send('Erro ao acessar pasta converted.');
+      }
+
+      // Acha o arquivo que tem a extensão .html
+      const arquivoHtml = files.find(f => path.extname(f).toLowerCase() === '.html');
+
+      if (!arquivoHtml) {
+        return res.status(500).send('Arquivo convertido não encontrado na pasta converted.');
+      }
+
+      const caminhoHtml = path.join(pastaDestino, arquivoHtml);
+
+      // Lê o conteúdo do arquivo convertido
+      fs.readFile(caminhoHtml, 'utf8', (err, data) => {
+        if (err) {
+          console.error('Erro ao ler o HTML convertido:', err);
+          return res.status(500).send('Erro ao ler o arquivo convertido.');
+        }
+
+        // Reescreve os caminhos das imagens no HTML para o caminho público correto
+        const dataComCaminhoCorrigido = data.replace(
+          /src="([^"]+)"/g,
+          (match, srcPath) => {
+            // Se o src não for URL absoluta, adiciona prefixo '/converted/'
+            if (!srcPath.startsWith('http') && !srcPath.startsWith('/')) {
+              return `src="/converted/${srcPath}"`;
+            }
+            return match;
+          }
+        );
+
+        res.send(dataComCaminhoCorrigido);
+      });
+    });
+  });
+});
 
 app.get('/api/questions', async (req, res) => {
   try {

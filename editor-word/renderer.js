@@ -1,5 +1,3 @@
-const { clipboard: electronClipboard } = require('electron')
-
 const { Editor } = require('@tiptap/core')
 const StarterKit = require('@tiptap/starter-kit').default
 const Image = require('@tiptap/extension-image').default
@@ -480,3 +478,17 @@ editor.view.dom.addEventListener('paste', (event) => {
     }
   }
 })
+
+const form = document.getElementById('uploadForm');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+
+    const res = await fetch('http://localhost:3001/upload', {
+      method: 'POST',
+      body: formData
+    });
+
+    const html = await res.text();
+    document.getElementById('preview').textContent = "Questão enviada!";
+});
