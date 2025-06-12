@@ -22,11 +22,27 @@ const app = express()
 app.use(cors())
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/converted', express.static(path.resolve('converted')));
-app.use(express.json())
+app.use(express.json({ limit: '50mb' }));       // aumenta o limite para 50MB
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
 
-app.post('/upload', upload.single('docxFile'), (req, res) => {
+function limparPasta(pasta) {
+    if (fs.existsSync(pasta)) {
+      const arquivos = fs.readdirSync(pasta)
+      for (const arquivo of arquivos) {
+        const caminhoCompleto = path.join(pasta, arquivo)
+        const stats = fs.statSync(caminhoCompleto)
+        if (stats.isFile()) {
+          fs.unlinkSync(caminhoCompleto)  // deleta arquivo
+        } else if (stats.isDirectory()) {
+          fs.rmSync(caminhoCompleto, { recursive: true, force: true }) // deleta pasta recursivamente
+        }
+      }
+    }
+  }
+
+app.post('/upload', upload.single('file'), (req, res) => {
   if (!req.file) {
     return res.status(400).send('Nenhum arquivo enviado.');
   }
@@ -55,14 +71,13 @@ app.post('/upload', upload.single('docxFile'), (req, res) => {
         return res.status(500).send('Erro ao acessar pasta converted.');
       }
 
-      // Acha o arquivo que tem a extensão .html
-      const arquivoHtml = files.find(f => path.extname(f).toLowerCase() === '.html');
+      const nomeArquivoSemExt = path.parse(arquivoDocx).name;
 
-      if (!arquivoHtml) {
+      if (!nomeArquivoSemExt) {
         return res.status(500).send('Arquivo convertido não encontrado na pasta converted.');
       }
 
-      const caminhoHtml = path.join(pastaDestino, arquivoHtml);
+      const caminhoHtml = path.join(pastaDestino, `${nomeArquivoSemExt}.html`);
 
       // Lê o conteúdo do arquivo convertido
       fs.readFile(caminhoHtml, 'utf8', (err, data) => {
@@ -72,13 +87,16 @@ app.post('/upload', upload.single('docxFile'), (req, res) => {
         }
 
         // Reescreve os caminhos das imagens no HTML para o caminho público correto
+        let servidor = process.env.SERVER_URL || 'http://localhost:3001';
         const dataComCaminhoCorrigido = data.replace(
           /src="([^"]+)"/g,
           (match, srcPath) => {
-            // Se o src não for URL absoluta, adiciona prefixo '/converted/'
             if (!srcPath.startsWith('http') && !srcPath.startsWith('/')) {
-              return `src="/converted/${srcPath}"`;
+              return `src="${servidor}/converted/${srcPath}"`;
             }
+            console.log(`srcPath: ${srcPath}`);
+            console.log('match:', match);
+            // Se o srcPath já é um caminho absoluto ou relativo, não altera
             return match;
           }
         );
@@ -112,6 +130,15 @@ app.post('/api/questions', async (req, res) => {
     tema
   } = req.body
 
+  let realSerie;
+
+  if (typeof serie === 'string' && /^\d+$/.test(serie.trim())) {
+    realSerie = `${serie.trim()}° ANO`
+  } else if (typeof serie === 'number') {
+    realSerie = `${serie}° ANO`
+  }
+
+
   if (!titulo || !enunciado || !tipo || !serie || !disciplina || !tema) {
     return res.status(400).json({ error: 'Campos obrigatórios ausentes' })
   }
@@ -135,11 +162,11 @@ app.post('/api/questions', async (req, res) => {
       [
         titulo,
         enunciado,
-        tipo === 'objetiva' ? alternativas : null,
+        tipo === 'objetiva' ? JSON.stringify(alternativas) : null,
         tipo === 'objetiva' ? alternativa_correta : null,
         tipo === 'discursiva' ? gabarito : null,
         tipo,
-        serie,
+        realSerie,
         disciplina,
         tema
       ]

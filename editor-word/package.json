@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json.schemastore.org/package",
   "name": "editor-word",
   "version": "1.0.0",
   "main": "index.js",

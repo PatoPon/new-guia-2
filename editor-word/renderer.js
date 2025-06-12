@@ -480,15 +480,105 @@ editor.view.dom.addEventListener('paste', (event) => {
 })
 
 const form = document.getElementById('uploadForm');
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const formData = new FormData(form);
 
-    const res = await fetch('http://localhost:3001/upload', {
-      method: 'POST',
-      body: formData
-    });
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const formData = new FormData(form);
 
-    const html = await res.text();
-    document.getElementById('preview').textContent = "Questão enviada!";
+  // Envia o arquivo para o backend
+  const res = await fetch('http://localhost:3001/upload', {
+    method: 'POST',
+    body: formData
+  });
+
+  const text = await res.text();
+
+  // Parse do HTML para texto puro
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(text, 'text/html');
+  const plainText = doc.body.textContent;
+  const imgs = doc.querySelectorAll('img')
+
+  // Funções de extração usando texto puro
+  const getCampo = (tag) => {
+    const match = plainText.match(new RegExp(`@${tag}:?\\s*([\\s\\S]*?)(?=@|$)`, 'i'));
+    return match ? match[1].trim() : null;
+  };
+
+  const getTitulo = () => {
+    const match = plainText.match(/@Titulo:?\s*(.*)/i);
+    return match ? match[1].trim() : null;
+  };
+
+  const getEnunciado = () => {
+    const nodes = Array.from(doc.body.childNodes);
+    let capturando = false;
+    let html = '';
+
+    for (let node of nodes) {
+      const texto = node.textContent?.trim() || '';
+
+      if (!capturando && texto.startsWith('@Enunciado')) {
+        capturando = true;
+        // Inclui o que vier depois de "@Enunciado:" na mesma linha, se houver
+        const match = texto.match(/@Enunciado:?\s*(.*)/i);
+        if (match && match[1]) {
+          html += match[1] + '<br>';
+        }
+        continue;
+      }
+
+      if (capturando) {
+        if (/^@A\)/i.test(texto)) break; // parou no @A)
+        html += node.outerHTML || node.textContent;
+      }
+    }
+
+    return html.trim();
+  };
+
+  const getAlternativas = () => {
+    const matches = plainText.match(/@([A-E])\)\s*([\s\S]*?)(?=@[A-E]\)|@Gabarito|$)/gi);
+    if (!matches) return null;
+    return matches.map(alt => alt.replace(/^@[A-E]\)\s*/i, '').trim());
+  };
+
+  // Extrai os campos
+  const tituloPersonalizado = getTitulo();
+  const enunciado = getEnunciado();
+  const alternativas = getAlternativas();
+  const gabarito = getCampo('Gabarito');
+  const disciplina = getCampo('Disciplina');
+  const tema = getCampo('Tema');
+  const serie = getCampo('Série');
+
+  const titulo = tituloPersonalizado || enunciado?.slice(0, 50) || 'Questão sem título';
+
+  // Normaliza o gabarito para índice (A -> 0, B -> 1, etc.)
+  const alternativaCorretaIndex = 'ABCDE'.indexOf(gabarito?.trim().toUpperCase());
+
+  // Envia para o endpoint /api/questions
+  const response = await fetch('http://localhost:3001/api/questions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      titulo,
+      enunciado,
+      alternativas,
+      alternativa_correta: alternativaCorretaIndex,
+      gabarito: null,
+      tipo: 'objetiva',
+      serie: serie.match(/^\d+/)?.[0] || '',
+      disciplina,
+      tema
+    })
+  });
+
+  const result = await response.json();
+
+  document.getElementById('preview').textContent = response.ok
+    ? `Questão enviada com sucesso!\nID: ${result.id}`
+    : `Erro ao enviar: ${result.error}`;
 });
