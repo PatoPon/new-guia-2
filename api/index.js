@@ -54,9 +54,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
     fs.mkdirSync(pastaDestino);
   }
 
-  const pathToSoffice = `"C:\\Program Files\\LibreOffice\\program\\soffice.exe"`;
-
-  const comando = `${pathToSoffice} --headless --convert-to html:"HTML (StarWriter)" "${arquivoDocx}" --outdir "${pastaDestino}"`;
+  const comando = `soffice --headless --convert-to html:"HTML (StarWriter)" "${arquivoDocx}" --outdir "${pastaDestino}"`;
 
   exec(comando, (error, stdout, stderr) => {
     if (error) {
