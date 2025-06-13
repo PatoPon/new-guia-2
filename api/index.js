@@ -19,28 +19,18 @@ const outputDir = path.join(__dirname, 'converted');
 dotenv.config()
 
 const app = express()
-app.use(cors())
+app.use(cors());
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  next();
+});
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/converted', express.static(path.resolve('converted')));
 app.use(express.json({ limit: '50mb' }));       // aumenta o limite para 50MB
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
-
-function limparPasta(pasta) {
-    if (fs.existsSync(pasta)) {
-      const arquivos = fs.readdirSync(pasta)
-      for (const arquivo of arquivos) {
-        const caminhoCompleto = path.join(pasta, arquivo)
-        const stats = fs.statSync(caminhoCompleto)
-        if (stats.isFile()) {
-          fs.unlinkSync(caminhoCompleto)  // deleta arquivo
-        } else if (stats.isDirectory()) {
-          fs.rmSync(caminhoCompleto, { recursive: true, force: true }) // deleta pasta recursivamente
-        }
-      }
-    }
-  }
 
 app.post('/upload', upload.single('file'), (req, res) => {
   if (!req.file) {
