@@ -72,15 +72,21 @@ app.post('/upload', upload.single('file'), (req, res) => {
         // Reescreve os caminhos das imagens no HTML para o caminho público correto
         let servidor = process.env.SERVER_URL || 'http://103.199.187.204:3001';
         const dataComCaminhoCorrigido = data.replace(
-          /src="([^"]+)"/g,
-          (match, srcPath) => {
+          /<img([^>]+)src="([^"]+)"([^>]*)>/g,
+          (match, antesSrc, srcPath, depoisSrc) => {
+            let novoSrc = srcPath;
             if (!srcPath.startsWith('http') && !srcPath.startsWith('/')) {
-              return `src="${servidor}/converted/${srcPath}"`;
+              novoSrc = `${servidor}/converted/${srcPath}`;
             }
-            console.log(`srcPath: ${srcPath}`);
-            console.log('match:', match);
-            // Se o srcPath já é um caminho absoluto ou relativo, não altera
-            return match;
+
+            // Verifica se já existe crossorigin na tag
+            if (/crossorigin\s*=/i.test(match)) {
+              // Já tem crossorigin, só corrige o src
+              return `<img${antesSrc}src="${novoSrc}"${depoisSrc}>`;
+            } else {
+              // Não tem crossorigin, adiciona junto do src
+              return `<img${antesSrc}src="${novoSrc}" crossorigin="anonymous"${depoisSrc}>`;
+            }
           }
         );
 
