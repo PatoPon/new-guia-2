@@ -25,11 +25,11 @@ const DisciplinasETemas = () => {
   const [filtroSeriePorDisciplina, setFiltroSeriePorDisciplina] = useState({})
 
   const carregarDisciplinasETemas = async () => {
-    const resDisciplinas = await fetch('http://localhost:3001/api/disciplinas')
+    const resDisciplinas = await fetch('http://103.199.187.204:3001/api/disciplinas')
     const dataDisciplinas = await resDisciplinas.json()
     const ordemSalva = JSON.parse(localStorage.getItem('ordemDisciplinas'))
 
-    const resSeries = await fetch('http://localhost:3001/api/series')
+    const resSeries = await fetch('http://103.199.187.204:3001/api/series')
     const listaSeries = await resSeries.json()
 
     if (ordemSalva?.length) {
@@ -52,7 +52,7 @@ const DisciplinasETemas = () => {
     })
 
     const promises = dataDisciplinas.map(d =>
-      fetch(`http://localhost:3001/api/temas/${d.id}`).then(res => res.json())
+      fetch(`http://103.199.187.204:3001/api/temas/${d.id}`).then(res => res.json())
     )
     const temasArrays = await Promise.all(promises)
 
@@ -70,7 +70,7 @@ const DisciplinasETemas = () => {
 
   const handleAdicionarDisciplina = async () => {
     if (!novaDisciplina.trim()) return
-    const res = await fetch('http://localhost:3001/api/disciplinas', {
+    const res = await fetch('http://103.199.187.204:3001/api/disciplinas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: uuidv4(), nome: novaDisciplina }),
@@ -85,7 +85,7 @@ const DisciplinasETemas = () => {
   const handleRemoverDisciplina = async (id) => {
     const confirm = window.confirm('Deseja remover esta disciplina e seus temas?')
     if (!confirm) return
-    await fetch(`http://localhost:3001/api/disciplinas/${id}`, { method: 'DELETE' })
+    await fetch(`http://103.199.187.204:3001/api/disciplinas/${id}`, { method: 'DELETE' })
     setDisciplinas(prev => {
       const novas = prev.filter(d => d.id !== id)
       localStorage.setItem('ordemDisciplinas', JSON.stringify(novas.map(d => d.id)))
@@ -101,7 +101,7 @@ const DisciplinasETemas = () => {
     const nome = novosTemas[disciplinaId]?.trim()
     if (!nome) return
 
-    const res = await fetch('http://localhost:3001/api/temas', {
+    const res = await fetch('http://103.199.187.204:3001/api/temas', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nome: nome, disciplina_id: disciplinaId, serie_id: filtroSeriePorDisciplina[disciplinaId] }),
@@ -118,7 +118,7 @@ const DisciplinasETemas = () => {
 
   const handleUpdateTema = async (temaId, disciplinaId, novoNome) => {
     if (!novoNome.trim()) return
-    const res = await fetch(`http://localhost:3001/api/temas/${temaId}`, {
+    const res = await fetch(`http://103.199.187.204:3001/api/temas/${temaId}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nome: novoNome }),
@@ -142,7 +142,7 @@ const DisciplinasETemas = () => {
     const confirm = window.confirm('Deseja remover este tema?')
     if (!confirm) return
 
-    await fetch(`http://localhost:3001/api/temas/${temaId}`, { method: 'DELETE' })
+    await fetch(`http://103.199.187.204:3001/api/temas/${temaId}`, { method: 'DELETE' })
     setTemasPorDisciplina(prev => ({
       ...prev,
       [disciplinaId]: prev[disciplinaId].filter(t => t.id !== temaId),

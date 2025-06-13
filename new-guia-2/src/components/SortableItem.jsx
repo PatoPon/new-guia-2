@@ -69,7 +69,7 @@ export const SortableItem = ({
 
   useEffect(() => {
     const carregarSeries = async () => {
-      const res = await fetch('http://localhost:3001/api/series')
+      const res = await fetch('http://103.199.187.204:3001/api/series')
       const data = await res.json()
       setSeries(data)
 

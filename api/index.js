@@ -87,7 +87,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
         }
 
         // Reescreve os caminhos das imagens no HTML para o caminho público correto
-        let servidor = process.env.SERVER_URL || 'http://localhost:3001';
+        let servidor = process.env.SERVER_URL || 'http://103.199.187.204:3001';
         const dataComCaminhoCorrigido = data.replace(
           /src="([^"]+)"/g,
           (match, srcPath) => {

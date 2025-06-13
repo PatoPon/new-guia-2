@@ -67,9 +67,9 @@ const CreateQuestion = () => {
     const fetchDados = async () => {
       try {
         const [resSeries, resDisciplinas, resTemas] = await Promise.all([
-          fetch('http://localhost:3001/api/series'),
-          fetch('http://localhost:3001/api/disciplinas'),
-          fetch('http://localhost:3001/api/temas')
+          fetch('http://103.199.187.204:3001/api/series'),
+          fetch('http://103.199.187.204:3001/api/disciplinas'),
+          fetch('http://103.199.187.204:3001/api/temas')
         ])
 
         const [dataSeries, dataDisciplinas, dataTemas] = await Promise.all([
@@ -129,7 +129,7 @@ const CreateQuestion = () => {
     }
 
     try {
-      const res = await fetch('http://localhost:3001/api/questions', {
+      const res = await fetch('http://103.199.187.204:3001/api/questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -304,9 +304,9 @@ let listaTemas = [];
 async function carregarDados() {
   try {
     const [resSeries, resDisciplinas, resTemas] = await Promise.all([
-      fetch('http://localhost:3001/api/series'),
-      fetch('http://localhost:3001/api/disciplinas'),
-      fetch('http://localhost:3001/api/temas')
+      fetch('http://103.199.187.204:3001/api/series'),
+      fetch('http://103.199.187.204:3001/api/disciplinas'),
+      fetch('http://103.199.187.204:3001/api/temas')
     ]);
 
     listaSeries = await resSeries.json();
@@ -431,7 +431,7 @@ btnEnviar.addEventListener('click', async () => {
   }
 
   try {
-    const res = await fetch('http://localhost:3001/api/questions', {
+    const res = await fetch('http://103.199.187.204:3001/api/questions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(bodyToSend),
@@ -486,7 +486,7 @@ form.addEventListener('submit', async (e) => {
   const formData = new FormData(form);
 
   // Envia o arquivo para o backend
-  const res = await fetch('http://localhost:3001/upload', {
+  const res = await fetch('http://103.199.187.204:3001/upload', {
     method: 'POST',
     body: formData
   });
@@ -558,7 +558,7 @@ form.addEventListener('submit', async (e) => {
   const alternativaCorretaIndex = 'ABCDE'.indexOf(gabarito?.trim().toUpperCase());
 
   // Envia para o endpoint /api/questions
-  const response = await fetch('http://localhost:3001/api/questions', {
+  const response = await fetch('http://103.199.187.204:3001/api/questions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'

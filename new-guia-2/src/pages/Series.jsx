@@ -5,20 +5,20 @@ const Series = () => {
   const [novaSerie, setNovaSerie] = useState('')
 
   useEffect(() => {
-    fetch('http://localhost:3001/api/series')
+    fetch('http://103.199.187.204:3001/api/series')
       .then(res => res.json())
       .then(setSeries)
   }, [])
 
   const handleAdicionarSerie = async () => {
     if (!novaSerie.trim()) return
-    await fetch('http://localhost:3001/api/series', {
+    await fetch('http://103.199.187.204:3001/api/series', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nome: novaSerie })
     })
     setNovaSerie('')
-    const res = await fetch('http://localhost:3001/api/series')
+    const res = await fetch('http://103.199.187.204:3001/api/series')
     const data = await res.json()
     setSeries(data)
   }
@@ -27,7 +27,7 @@ const Series = () => {
     const confirm = window.confirm('Deseja remover esta série?')
     if (!confirm) return
 
-    await fetch(`http://localhost:3001/api/series/${id}`, {
+    await fetch(`http://103.199.187.204:3001/api/series/${id}`, {
       method: 'DELETE'
     })
     // Atualiza lista localmente sem precisar buscar novamente

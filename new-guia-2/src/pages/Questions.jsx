@@ -11,7 +11,7 @@ const Questions = () => {
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
-        const res = await fetch('http://localhost:3001/api/questions')
+        const res = await fetch('http://103.199.187.204:3001/api/questions')
         const data = await res.json()
         setQuestions(data)
       } catch (error) {
@@ -33,7 +33,7 @@ const Questions = () => {
 
   const confirmDelete = async () => {
     try {
-      await fetch(`http://localhost:3001/api/questions/${questionToDelete}`, {
+      await fetch(`http://103.199.187.204:3001/api/questions/${questionToDelete}`, {
         method: 'DELETE'
       })
       setQuestions(prev => prev.filter(q => q.id !== questionToDelete))
