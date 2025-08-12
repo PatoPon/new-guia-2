@@ -119,15 +119,6 @@ app.post('/api/questions', async (req, res) => {
     tema
   } = req.body
 
-  let realSerie;
-
-  if (typeof serie === 'string' && /^\d+$/.test(serie.trim())) {
-    realSerie = `${serie.trim()}° ANO`
-  } else if (typeof serie === 'number') {
-    realSerie = `${serie}° ANO`
-  }
-
-
   if (!titulo || !enunciado || !tipo || !serie || !disciplina || !tema) {
     return res.status(400).json({ error: 'Campos obrigatórios ausentes' })
   }
@@ -155,7 +146,7 @@ app.post('/api/questions', async (req, res) => {
         tipo === 'objetiva' ? alternativa_correta : null,
         tipo === 'discursiva' ? gabarito : null,
         tipo,
-        realSerie,
+        serie,
         disciplina,
         tema
       ]

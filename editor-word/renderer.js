@@ -430,6 +430,8 @@ btnEnviar.addEventListener('click', async () => {
     bodyToSend.gabarito = gabarito;
   }
 
+  console.log(bodyToSend)
+
   try {
     const res = await fetch('http://103.199.187.204:3001/api/questions', {
       method: 'POST',
@@ -497,7 +499,6 @@ form.addEventListener('submit', async (e) => {
   const parser = new DOMParser();
   const doc = parser.parseFromString(text, 'text/html');
   const plainText = doc.body.textContent;
-  const imgs = doc.querySelectorAll('img')
 
   // Funções de extração usando texto puro
   const getCampo = (tag) => {
@@ -515,22 +516,74 @@ form.addEventListener('submit', async (e) => {
     let capturando = false;
     let html = '';
 
-    for (let node of nodes) {
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
       const texto = node.textContent?.trim() || '';
 
-      if (!capturando && texto.startsWith('@Enunciado')) {
+      if (!capturando && texto.toLowerCase().startsWith('@enunciado')) {
         capturando = true;
-        // Inclui o que vier depois de "@Enunciado:" na mesma linha, se houver
-        const match = texto.match(/@Enunciado:?\s*(.*)/i);
-        if (match && match[1]) {
-          html += match[1] + '<br>';
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          const htmlDoNo = node.outerHTML;
+          const pos = htmlDoNo.toLowerCase().indexOf('@enunciado');
+          html += htmlDoNo.slice(pos + '@enunciado'.length).replace(/^:?\s*/, '') + '\n';
+        } else {
+          html += texto.replace(/^@enunciado:?\s*/i, '') + '\n';
         }
         continue;
       }
 
       if (capturando) {
-        if (/^@A\)/i.test(texto)) break; // parou no @A)
-        html += node.outerHTML || node.textContent;
+        if (texto.toUpperCase().includes('@A)')) break;
+
+        if (node.nodeType === Node.ELEMENT_NODE) {
+          // Verifica se é um <p> que contém imagem Shape
+          const isShapeImage =
+            node.tagName === 'P' &&
+            /<img[^>]+(name="Shape[^"]*"|alt="Shape[^"]*")/i.test(node.innerHTML);
+
+          // Próximo nó
+          const getNextElementNode = (nodes, currentIndex) => {
+            for (let j = currentIndex + 1; j < nodes.length; j++) {
+              if (nodes[j].nodeType === Node.ELEMENT_NODE) {
+                return nodes[j];
+              }
+            }
+            return null; // se não achar elemento depois
+          };
+
+          const nextNode = getNextElementNode(nodes, i);
+          const nextText = nextNode?.textContent?.trim() || '';
+
+          if (isShapeImage && nextNode?.tagName === 'P' && nextText.startsWith('--forma--')) {
+            const textoDentroForma = nextText.replace('--forma--', '').trim();
+
+            html += `
+              <div style="position: relative; display: inline-block; margin: 10px 0;">
+                ${node.innerHTML}
+                <div style="
+                  position: absolute;
+                  top: 50%;
+                  left: 50%;
+                  transform: translate(-50%, -50%);
+                  font-size: 14px;
+                  color: black;
+                  pointer-events: none;
+                  text-align: center;
+                  width: 90%;
+                  ">
+                  ${textoDentroForma}
+                </div>
+              </div>
+            `;
+
+            i += 2; // pula o próximo nó porque já foi usado
+            continue;
+          }
+
+          html += node.outerHTML + '\n';
+        } else if (node.nodeType === Node.TEXT_NODE) {
+          html += texto + '\n';
+        }
       }
     }
 
