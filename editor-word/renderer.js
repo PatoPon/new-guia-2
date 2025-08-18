@@ -507,7 +507,7 @@ form.addEventListener('submit', async (e) => {
   };
 
   const getTitulo = () => {
-    const match = plainText.match(/@Titulo:?\s*(.*)/i);
+    const match = plainText.match(/@Ti:?\s*(.*)/i);
     return match ? match[1].trim() : null;
   };
 
@@ -520,14 +520,14 @@ form.addEventListener('submit', async (e) => {
       const node = nodes[i];
       const texto = node.textContent?.trim() || '';
 
-      if (!capturando && texto.toLowerCase().startsWith('@enunciado')) {
+      if (!capturando && texto.toLowerCase().startsWith('@E')) {
         capturando = true;
         if (node.nodeType === Node.ELEMENT_NODE) {
           const htmlDoNo = node.outerHTML;
-          const pos = htmlDoNo.toLowerCase().indexOf('@enunciado');
-          html += htmlDoNo.slice(pos + '@enunciado'.length).replace(/^:?\s*/, '') + '\n';
+          const pos = htmlDoNo.toLowerCase().indexOf('@E');
+          html += htmlDoNo.slice(pos + '@E'.length).replace(/^:?\s*/, '') + '\n';
         } else {
-          html += texto.replace(/^@enunciado:?\s*/i, '') + '\n';
+          html += texto.replace(/^@E:?\s*/i, '') + '\n';
         }
         continue;
       }
@@ -600,10 +600,11 @@ form.addEventListener('submit', async (e) => {
   const tituloPersonalizado = getTitulo();
   const enunciado = getEnunciado();
   const alternativas = getAlternativas();
-  const gabarito = getCampo('Gabarito');
-  const disciplina = getCampo('Disciplina');
-  const tema = getCampo('Tema');
-  const serie = getCampo('Série');
+  const gabarito = getCampo('G');
+  const disciplina = getCampo('D');
+  const tema = getCampo('T');
+  const serie = getCampo('S');
+  const tipo = getCampo('I') || 'objetiva';
 
   const titulo = tituloPersonalizado || enunciado?.slice(0, 50) || 'Questão sem título';
 
@@ -622,7 +623,7 @@ form.addEventListener('submit', async (e) => {
       alternativas,
       alternativa_correta: alternativaCorretaIndex,
       gabarito: null,
-      tipo: 'objetiva',
+      tipo: tipo,
       serie: serie.match(/^\d+/)?.[0] || '',
       disciplina,
       tema
