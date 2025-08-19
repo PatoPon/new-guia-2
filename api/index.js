@@ -119,8 +119,14 @@ app.post('/api/questions', async (req, res) => {
     tema
   } = req.body
 
-  if (!titulo || !enunciado || !tipo || !serie || !disciplina || !tema) {
-    return res.status(400).json({ error: 'Campos obrigatórios ausentes' })
+  const faltando = ['titulo', 'enunciado', 'tipo', 'serie', 'disciplina', 'tema']
+    .filter(campo => !req.body[campo] || (typeof req.body[campo] === 'string' && req.body[campo].trim() === ''));
+
+  if (faltando.length) {
+    return res.status(400).json({
+      error: 'Campos obrigatórios ausentes',
+      camposFaltando: faltando
+    });
   }
 
   if (tipo === 'objetiva') {
