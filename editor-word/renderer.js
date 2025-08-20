@@ -591,7 +591,7 @@ form.addEventListener('submit', async (e) => {
   };
 
   const getAlternativas = () => {
-    const matches = plainText.match(/@([A-E])\)\s*([\s\S]*?)(?=@[A-E]\)|@Gabarito|$)/gi);
+    const matches = plainText.match(/@([A-E])\)\s*([\s\S]*?)(?=@[A-E]\)|@G|$)/gi);
     if (!matches) return null;
     return matches.map(alt => alt.replace(/^@[A-E]\)\s*/i, '').trim());
   };
