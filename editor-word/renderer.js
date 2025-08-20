@@ -1,4 +1,7 @@
 const { Editor } = require('@tiptap/core')
+const { clipboard, nativeImage } = require('electron');
+const fs = require("fs");
+const path = require('path')
 const StarterKit = require('@tiptap/starter-kit').default
 const Image = require('@tiptap/extension-image').default
 const Bold = require('@tiptap/extension-bold').default
@@ -19,7 +22,8 @@ const TableRow = require('@tiptap/extension-table-row').default
 const TableCell = require('@tiptap/extension-table-cell').default
 const TableHeader = require('@tiptap/extension-table-header').default
 
-const RectangleShape = require('./Rectangle')
+const RectangleShape = require('./Rectangle');
+const { get } = require('http');
 
 const CustomTableCell = TableCell.extend({
   addAttributes() {
@@ -430,8 +434,6 @@ btnEnviar.addEventListener('click', async () => {
     bodyToSend.gabarito = gabarito;
   }
 
-  console.log(bodyToSend)
-
   try {
     const res = await fetch('http://103.199.187.204:3001/api/questions', {
       method: 'POST',
@@ -452,33 +454,57 @@ btnEnviar.addEventListener('click', async () => {
 });
 
 editor.view.dom.addEventListener('paste', (event) => {
-  const clipboardData = event.clipboardData || window.clipboardData
-  const htmlData = clipboardData.getData('text/html')
+event.preventDefault();
+  const clipboardData = event.clipboardData;
 
+  // 2. HTML (pega <img> quando possível)
+  const htmlData = clipboardData.getData("text/html");
   if (htmlData) {
-    const parser = new DOMParser()
-    const doc = parser.parseFromString(htmlData, 'text/html')
-    const imgs = doc.querySelectorAll('img')
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(htmlData, "text/html");
+    
+    const vImages = doc.querySelectorAll('v\\:imagedata');
 
-    if (imgs.length) {
-      event.preventDefault()
-      imgs.forEach(img => {
-        const src = img.src
-        const style = img.getAttribute('style') || ''
+    vImages.forEach(vImg => {
+      let src = vImg.getAttribute('src'); // pega o atributo src
+      if (src.startsWith('file:///')) {
+        // Remove o prefixo file:///
+        src = src.replace('file:///', '');
+        // No Windows, troque / por \ se quiser
+        src = src.replace(/\//g, '\\');
+        const data = fs.readFileSync(src);
+        const base64 = `data:image/png;base64,${data.toString('base64')}`;
 
-        if (src) {
-          editor.chain().focus().insertContent({
-            type: 'image',
-            attrs: {
-              src,
-              style,
-            },
-          }).run()
-        }
-      })
-      return
+        editor.chain().focus().insertContent({
+          type: 'image',
+          attrs: { src: base64 }
+        }).run()
+      }
+    });
+  }
+
+  const html = clipboard.readHTML();
+
+// Imagem
+const image = clipboard.readImage(); // retorna um NativeImage
+if (!image.isEmpty()) {
+  const src = image.toDataURL(); // transforma em base64 para usar como <img>
+}
+
+  // 3. Imagens puras do clipboard (printscreen, screenshots)
+  for (const item of clipboardData.items) {
+    if (item.type.startsWith("image/")) {
+      const file = item.getAsFile();
+      if (file) {
+        const src = URL.createObjectURL(file);
+        editor.chain().focus().insertContent({
+          type: "image",
+          attrs: { src }
+        }).run();
+      }
     }
   }
+
 })
 
 const form = document.getElementById('uploadForm');
@@ -500,95 +526,108 @@ form.addEventListener('submit', async (e) => {
   const doc = parser.parseFromString(text, 'text/html');
   const plainText = doc.body.textContent;
 
-  // Funções de extração usando texto puro
-  const getCampo = (tag) => {
-    const match = plainText.match(new RegExp(`@${tag}:?\\s*([\\s\\S]*?)(?=@|$)`, 'i'));
-    return match ? match[1].trim() : null;
+  function getQuestoes(doc, plainText) {
+    const blocos = plainText.split(/@Questão/i).slice(1);
+
+    return blocos.map((bloco, idx) => {
+
+      // Funções de extração usando texto puro
+      const getCampo = (tag) => {
+        const regex = new RegExp(`@${tag}(?=\\s*:)\\s*:([\\s\\S]*?)(?=\\r?\\n@|$)`, 'i');
+        const match = bloco.match(regex);
+        return match ? match[1].trim() : null;
+      };
+
+      const getTitulo = () => {
+        const match = bloco.match(/@Ti:?\s*([\s\S]*?)(?=@|$)/i);
+        return match ? match[1].trim() : null;
+      };
+
+function getEnunciados(doc) {
+  const nodes = Array.from(doc.body.childNodes);
+  const enunciados = [];
+  let capturando = false;
+  let html = '';
+
+  const getNextElementNode = (list, idx) => {
+    for (let j = idx + 1; j < list.length; j++) {
+      if (list[j].nodeType === Node.ELEMENT_NODE) return list[j];
+    }
+    return null;
   };
 
-  const getTitulo = () => {
-    const match = plainText.match(/@Ti:?\s*(.*)/i);
-    return match ? match[1].trim() : null;
-  };
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+    const nodeText = node.textContent?.trim() || '';
 
-  const getEnunciado = () => {
-    const nodes = Array.from(doc.body.childNodes);
-    let capturando = false;
-    let html = '';
+    // Inicia captura se o nó contém @E
+    if (!capturando && /@E/i.test(nodeText)) {
+      capturando = true;
 
-    for (let i = 0; i < nodes.length; i++) {
-      const node = nodes[i];
-      const texto = node.textContent?.trim() || '';
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const cloned = node.cloneNode(true);
+        cloned.innerHTML = cloned.innerHTML.replace(/@E:?\s*/i, '');
+        html += cloned.outerHTML + '\n';
+      } else {
+        html += nodeText.replace(/@E:?\s*/i, '') + '\n';
+      }
+      continue;
+    }
 
-      if (!capturando && texto.toLowerCase().startsWith('@E')) {
-        capturando = true;
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          const htmlDoNo = node.outerHTML;
-          const pos = htmlDoNo.toLowerCase().indexOf('@E');
-          html += htmlDoNo.slice(pos + '@E'.length).replace(/^:?\s*/, '') + '\n';
-        } else {
-          html += texto.replace(/^@E:?\s*/i, '') + '\n';
-        }
+    if (!capturando) continue;
+
+    // Encerra ao encontrar @A)
+    if (/@A\)/i.test(nodeText)) {
+      capturando = false;
+      enunciados.push(html.trim());
+      html = '';
+      continue;
+    }
+
+    // Captura o nó completo
+    if (node.nodeType === Node.ELEMENT_NODE) {
+      const isShapeImage = node.tagName === 'P' &&
+        /<img[^>]+(name="Shape[^"]*"|alt="Shape[^"]*")/i.test(node.innerHTML);
+
+      const nextNode = getNextElementNode(nodes, i);
+      const nextText = nextNode?.textContent?.trim() || '';
+
+      if (isShapeImage && nextNode?.tagName === 'P' && nextText.startsWith('--forma--')) {
+        const textoForma = nextText.replace('--forma--', '').trim();
+        html += `
+          <div style="position: relative; display: inline-block; margin: 10px 0;">
+            ${node.innerHTML}
+            <div style="
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              transform: translate(-50%, -50%);
+              font-size: 14px;
+              color: black;
+              pointer-events: none;
+              text-align: center;
+              width: 90%;
+            ">
+              ${textoForma}
+            </div>
+          </div>
+        `;
+        i += 2; // pula o próximo nó já usado
         continue;
       }
 
-      if (capturando) {
-        if (texto.toUpperCase().includes('@A)')) break;
-
-        if (node.nodeType === Node.ELEMENT_NODE) {
-          // Verifica se é um <p> que contém imagem Shape
-          const isShapeImage =
-            node.tagName === 'P' &&
-            /<img[^>]+(name="Shape[^"]*"|alt="Shape[^"]*")/i.test(node.innerHTML);
-
-          // Próximo nó
-          const getNextElementNode = (nodes, currentIndex) => {
-            for (let j = currentIndex + 1; j < nodes.length; j++) {
-              if (nodes[j].nodeType === Node.ELEMENT_NODE) {
-                return nodes[j];
-              }
-            }
-            return null; // se não achar elemento depois
-          };
-
-          const nextNode = getNextElementNode(nodes, i);
-          const nextText = nextNode?.textContent?.trim() || '';
-
-          if (isShapeImage && nextNode?.tagName === 'P' && nextText.startsWith('--forma--')) {
-            const textoDentroForma = nextText.replace('--forma--', '').trim();
-
-            html += `
-              <div style="position: relative; display: inline-block; margin: 10px 0;">
-                ${node.innerHTML}
-                <div style="
-                  position: absolute;
-                  top: 50%;
-                  left: 50%;
-                  transform: translate(-50%, -50%);
-                  font-size: 14px;
-                  color: black;
-                  pointer-events: none;
-                  text-align: center;
-                  width: 90%;
-                  ">
-                  ${textoDentroForma}
-                </div>
-              </div>
-            `;
-
-            i += 2; // pula o próximo nó porque já foi usado
-            continue;
-          }
-
-          html += node.outerHTML + '\n';
-        } else if (node.nodeType === Node.TEXT_NODE) {
-          html += texto + '\n';
-        }
-      }
+      html += node.outerHTML + '\n';
+    } else if (node.nodeType === Node.TEXT_NODE) {
+      html += nodeText + '\n';
     }
+  }
 
-    return html.trim();
-  };
+  // Se o último enunciado não terminou com @A)
+  if (html.trim()) enunciados.push(html.trim());
+
+  return enunciados;
+}
+
 
   const getAlternativas = () => {
     const matches = plainText.match(/@([A-E])\)\s*([\s\S]*?)(?=@[A-E]\)|@G|$)/gi);
@@ -598,35 +637,50 @@ form.addEventListener('submit', async (e) => {
 
   // Extrai os campos
   const tituloPersonalizado = getTitulo();
-  const enunciado = getEnunciado();
-  const alternativas = getAlternativas();
-  const gabarito = getCampo('G');
-  const disciplina = getCampo('D');
-  const tema = getCampo('T');
-  const serie = getCampo('S');
-  const tipo = getCampo('I') || 'objetiva';
+  const enunciado = getEnunciados(doc);
+  const tipo = getCampo("I")
 
   const titulo = tituloPersonalizado || enunciado?.slice(0, 50) || 'Questão sem título';
 
+  let gabarito;
   // Normaliza o gabarito para índice (A -> 0, B -> 1, etc.)
-  const alternativaCorretaIndex = 'ABCDE'.indexOf(gabarito?.trim().toUpperCase());
+  if (tipo == 'objetiva') {
+    gabarito = 'ABCDE'.indexOf(getCampo('G')?.trim().toUpperCase());
+  } else {
+    gabarito = getCampo('G');
+  }
+    
+  return {
+      titulo: titulo,
+      gabarito: gabarito,
+      disciplina: getCampo('D'),
+      alternativas: tipo == 'objetiva' ? getAlternativas() : null,
+      tema: getCampo('T'),
+      tipo: getCampo('I'),
+      serie: getCampo('S'),
+      enunciado: enunciado[idx-1]
+    };
+})}
 
-  // Envia para o endpoint /api/questions
+  const questoes = getQuestoes(doc, plainText);
+
+for (const questao of questoes) {
+  console.log(questao)
   const response = await fetch('http://103.199.187.204:3001/api/questions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      titulo,
-      enunciado,
-      alternativas,
-      alternativa_correta: alternativaCorretaIndex,
-      gabarito: null,
-      tipo: tipo,
-      serie: serie.match(/^\d+/)?.[0] || '',
-      disciplina,
-      tema
+      titulo: questao.titulo,
+      enunciado: questao.enunciado,
+      alternativas: questao.alternativas || [], // caso não tenha alternativas
+      alternativa_correta: questao.alternativaCorretaIndex || null,
+      gabarito: questao.gabarito || null,
+      tipo: questao.tipo,
+      serie: questao.serie?.match(/^\d+/)?.[0] || '',
+      disciplina: questao.disciplina,
+      tema: questao.tema
     })
   });
 
@@ -635,4 +689,6 @@ form.addEventListener('submit', async (e) => {
   document.getElementById('preview').textContent = response.ok
     ? `Questão enviada com sucesso!\nID: ${result.id}`
     : `Erro ao enviar: ${result.error}`;
+}
+
 });
