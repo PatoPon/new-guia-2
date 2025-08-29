@@ -545,89 +545,77 @@ form.addEventListener('submit', async (e) => {
 
 function getEnunciados(doc) {
   const nodes = Array.from(doc.body.childNodes);
-  const enunciados = [];
+  const questoes = [];
+  let currentQuestao = '';
   let capturando = false;
-  let html = '';
 
-  const getNextElementNode = (list, idx) => {
-    for (let j = idx + 1; j < list.length; j++) {
-      if (list[j].nodeType === Node.ELEMENT_NODE) return list[j];
-    }
-    return null;
-  };
+  for (let node of nodes) {
+    const text = (node.textContent || '').trim();
 
-  for (let i = 0; i < nodes.length; i++) {
-    const node = nodes[i];
-    const nodeText = node.textContent?.trim() || '';
-
-    // Inicia captura se o nó contém @E
-    if (!capturando && /@E/i.test(nodeText)) {
-      capturando = true;
-
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        const cloned = node.cloneNode(true);
-        cloned.innerHTML = cloned.innerHTML.replace(/@E:?\s*/i, '');
-        html += cloned.outerHTML + '\n';
-      } else {
-        html += nodeText.replace(/@E:?\s*/i, '') + '\n';
+    // Início de nova questão
+    if (/^@Questão/i.test(text)) {
+      if (capturando && currentQuestao) {
+        questoes.push(currentQuestao.trim());
       }
+      currentQuestao = '';
+      capturando = true;
       continue;
     }
 
     if (!capturando) continue;
 
-    // Encerra ao encontrar @A)
-    if (/@A\)/i.test(nodeText)) {
-      capturando = false;
-      enunciados.push(html.trim());
-      html = '';
-      continue;
-    }
+    if (node.nodeType === 3) {
+      let cleanText = text.trim();
+      if (!cleanText) continue; // ignora text nodes vazios
+      // Remove @Campo: de qualquer lugar da linha
+      cleanText = cleanText.replace(/@\w+:.*$/i, '').trim();
+      if (cleanText) currentQuestao += cleanText + '\n';
+    
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+    // Separa por quebras de linha
+    let html = node.innerHTML
+        .split('\n')
+        .filter(line => {
+            const text = line.replace(/<[^>]*>/g, '').trim(); // extrai só o texto
+            return !/^@\w+[:)]/.test(text); // remove linhas que começam com @Campo: ou @A)
+        })
+        .join('\n');
 
-    // Captura o nó completo
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      const isShapeImage = node.tagName === 'P' &&
-        /<img[^>]+(name="Shape[^"]*"|alt="Shape[^"]*")/i.test(node.innerHTML);
-
-      const nextNode = getNextElementNode(nodes, i);
-      const nextText = nextNode?.textContent?.trim() || '';
-
-      if (isShapeImage && nextNode?.tagName === 'P' && nextText.startsWith('--forma--')) {
-        const textoForma = nextText.replace('--forma--', '').trim();
-        html += `
-          <div style="position: relative; display: inline-block; margin: 10px 0;">
-            ${node.innerHTML}
-            <div style="
-              position: absolute;
-              top: 50%;
-              left: 50%;
-              transform: translate(-50%, -50%);
-              font-size: 14px;
-              color: black;
-              pointer-events: none;
-              text-align: center;
-              width: 90%;
-            ">
-              ${textoForma}
-            </div>
-          </div>
-        `;
-        i += 2; // pula o próximo nó já usado
-        continue;
-      }
-
-      html += node.outerHTML + '\n';
-    } else if (node.nodeType === Node.TEXT_NODE) {
-      html += nodeText + '\n';
+    // Se sobrou algo, adiciona ao currentQuestao
+    if (html.trim()) {
+        const clone = node.cloneNode(true);
+        clone.innerHTML = html;
+        currentQuestao += clone.outerHTML + '\n';
     }
   }
 
-  // Se o último enunciado não terminou com @A)
-  if (html.trim()) enunciados.push(html.trim());
+  }
 
-  return enunciados;
+  if (capturando && currentQuestao) {
+    questoes.push(currentQuestao.trim());
+  }
+
+  return questoes;
 }
 
+function limparEnunciado(rawHtml) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(rawHtml, 'text/html');
+
+  // Percorre todos os elementos de texto
+  doc.body.querySelectorAll('*').forEach(el => {
+    if (el.childNodes.length === 1 && el.childNodes[0].nodeType === Node.TEXT_NODE) {
+      let text = el.textContent;
+      // Remove @Campo: e tudo que vem na mesma linha
+      text = text.replace(/^@\w+:[^\n]*/gi, '');
+      // Remove undefined
+      text = text.replace(/\bundefined\b/gi, '');
+      el.textContent = text.trim();
+    }
+  });
+
+  return doc.body.innerHTML.trim();
+}
 
   const getAlternativas = () => {
     const matches = plainText.match(/@([A-E])\)\s*([\s\S]*?)(?=@[A-E]\)|@G|$)/gi);
@@ -637,7 +625,7 @@ function getEnunciados(doc) {
 
   // Extrai os campos
   const tituloPersonalizado = getTitulo();
-  const enunciado = getEnunciados(doc);
+  const enunciado = getEnunciados(doc).map(e => limparEnunciado(e));
   const tipo = getCampo("I")
 
   const titulo = tituloPersonalizado || enunciado?.slice(0, 50) || 'Questão sem título';
@@ -652,30 +640,28 @@ function getEnunciados(doc) {
     
   return {
       titulo: titulo,
-      gabarito: gabarito,
+      gabarito: String(gabarito),
       disciplina: getCampo('D'),
       alternativas: tipo == 'objetiva' ? getAlternativas() : null,
       tema: getCampo('T'),
       tipo: getCampo('I'),
       serie: getCampo('S'),
-      enunciado: enunciado[idx-1]
+      enunciado: enunciado[idx]
     };
 })}
 
   const questoes = getQuestoes(doc, plainText);
 
 for (const questao of questoes) {
-  console.log(questao)
+  console.log(questao);
   const response = await fetch('http://103.199.187.204:3001/api/questions', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       titulo: questao.titulo,
       enunciado: questao.enunciado,
-      alternativas: questao.alternativas || [], // caso não tenha alternativas
-      alternativa_correta: questao.alternativaCorretaIndex || null,
+      alternativas: questao.alternativas || 'null',
+      alternativa_correta: questao.alternativaCorretaIndex || 'null',
       gabarito: questao.gabarito || null,
       tipo: questao.tipo,
       serie: questao.serie?.match(/^\d+/)?.[0] || '',
@@ -684,11 +670,18 @@ for (const questao of questoes) {
     })
   });
 
-  const result = await response.json();
+  // Pega o corpo como texto, mesmo se for erro 400
+  const text = await response.text();
+  if (!response.ok) {
+    console.error('Erro ao enviar questão:', response.status, text);
+    document.getElementById('preview').textContent = `Erro ${response.status}: ${text}`;
+    continue;
+  }
 
-  document.getElementById('preview').textContent = response.ok
-    ? `Questão enviada com sucesso!\nID: ${result.id}`
-    : `Erro ao enviar: ${result.error}`;
+  const result = JSON.parse(text); // aqui você assume que deu certo
+  document.getElementById('preview').textContent = `Questão enviada com sucesso!\nID: ${result.id}`;
 }
+
+
 
 });
