@@ -7,14 +7,12 @@ function createWindow() {
     height: 700,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false,  // para simplificar, depois ajusta se quiser
+      contextIsolation: false,
     }
   });
 
   win.loadFile('index.html');
   win.webContents.openDevTools()
-
 }
-
 
 app.whenReady().then(createWindow);

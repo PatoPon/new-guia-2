@@ -485,13 +485,11 @@ event.preventDefault();
 
   const html = clipboard.readHTML();
 
-// Imagem
-const image = clipboard.readImage(); // retorna um NativeImage
-if (!image.isEmpty()) {
-  const src = image.toDataURL(); // transforma em base64 para usar como <img>
-}
+  const image = clipboard.readImage();
+  if (!image.isEmpty()) {
+    const src = image.toDataURL(); 
+  }
 
-  // 3. Imagens puras do clipboard (printscreen, screenshots)
   for (const item of clipboardData.items) {
     if (item.type.startsWith("image/")) {
       const file = item.getAsFile();
@@ -513,7 +511,6 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const formData = new FormData(form);
 
-  // Envia o arquivo para o backend
   const res = await fetch('http://103.199.187.204:3001/upload', {
     method: 'POST',
     body: formData
@@ -521,7 +518,6 @@ form.addEventListener('submit', async (e) => {
 
   const text = await res.text();
 
-  // Parse do HTML para texto puro
   const parser = new DOMParser();
   const doc = parser.parseFromString(text, 'text/html');
   const plainText = doc.body.textContent;
@@ -531,7 +527,6 @@ form.addEventListener('submit', async (e) => {
 
     return blocos.map((bloco, idx) => {
 
-      // Funções de extração usando texto puro
       const getCampo = (tag) => {
         const regex = new RegExp(`@${tag}(?=\\s*:)\\s*:([\\s\\S]*?)(?=\\r?\\n@|$)`, 'i');
         const match = bloco.match(regex);
@@ -552,7 +547,6 @@ function getEnunciados(doc) {
   for (let node of nodes) {
     const text = (node.textContent || '').trim();
 
-    // Início de nova questão
     if (/^@Questão/i.test(text)) {
       if (capturando && currentQuestao) {
         questoes.push(currentQuestao.trim());
@@ -566,22 +560,19 @@ function getEnunciados(doc) {
 
     if (node.nodeType === 3) {
       let cleanText = text.trim();
-      if (!cleanText) continue; // ignora text nodes vazios
-      // Remove @Campo: de qualquer lugar da linha
+      if (!cleanText) continue;
       cleanText = cleanText.replace(/@\w+:.*$/i, '').trim();
       if (cleanText) currentQuestao += cleanText + '\n';
     
     } else if (node.nodeType === Node.ELEMENT_NODE) {
-    // Separa por quebras de linha
     let html = node.innerHTML
         .split('\n')
         .filter(line => {
-            const text = line.replace(/<[^>]*>/g, '').trim(); // extrai só o texto
-            return !/^@\w+[:)]/.test(text); // remove linhas que começam com @Campo: ou @A)
+            const text = line.replace(/<[^>]*>/g, '').trim();
+            return !/^@\w+[:)]/.test(text);
         })
         .join('\n');
 
-    // Se sobrou algo, adiciona ao currentQuestao
     if (html.trim()) {
         const clone = node.cloneNode(true);
         clone.innerHTML = html;
@@ -602,13 +593,10 @@ function limparEnunciado(rawHtml) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(rawHtml, 'text/html');
 
-  // Percorre todos os elementos de texto
   doc.body.querySelectorAll('*').forEach(el => {
     if (el.childNodes.length === 1 && el.childNodes[0].nodeType === Node.TEXT_NODE) {
       let text = el.textContent;
-      // Remove @Campo: e tudo que vem na mesma linha
       text = text.replace(/^@\w+:[^\n]*/gi, '');
-      // Remove undefined
       text = text.replace(/\bundefined\b/gi, '');
       el.textContent = text.trim();
     }
@@ -631,7 +619,6 @@ function limparEnunciado(rawHtml) {
   const titulo = tituloPersonalizado || enunciado?.slice(0, 50) || 'Questão sem título';
 
   let gabarito;
-  // Normaliza o gabarito para índice (A -> 0, B -> 1, etc.)
   if (tipo == 'objetiva') {
     gabarito = 'ABCDE'.indexOf(getCampo('G')?.trim().toUpperCase());
   } else {
@@ -670,7 +657,6 @@ for (const questao of questoes) {
     })
   });
 
-  // Pega o corpo como texto, mesmo se for erro 400
   const text = await response.text();
   if (!response.ok) {
     console.error('Erro ao enviar questão:', response.status, text);
@@ -678,10 +664,7 @@ for (const questao of questoes) {
     continue;
   }
 
-  const result = JSON.parse(text); // aqui você assume que deu certo
+  const result = JSON.parse(text);
   document.getElementById('preview').textContent = `Questão enviada com sucesso!\nID: ${result.id}`;
 }
-
-
-
 });
