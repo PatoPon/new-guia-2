@@ -630,6 +630,7 @@ function limparEnunciado(rawHtml) {
       gabarito: String(gabarito),
       disciplina: getCampo('D'),
       alternativas: tipo == 'objetiva' ? getAlternativas() : null,
+      bncc: getCampo('BNCC'),
       tema: getCampo('T'),
       tipo: getCampo('I'),
       serie: getCampo('S'),
@@ -653,7 +654,8 @@ for (const questao of questoes) {
       tipo: questao.tipo,
       serie: questao.serie?.match(/^\d+/)?.[0] || '',
       disciplina: questao.disciplina,
-      tema: questao.tema
+      tema: questao.tema,
+      bncc: questao.bncc || ''
     })
   });
 
