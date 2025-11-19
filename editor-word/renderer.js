@@ -538,56 +538,55 @@ form.addEventListener('submit', async (e) => {
         return match ? match[1].trim() : null;
       };
 
-function getEnunciados(doc) {
-  const nodes = Array.from(doc.body.childNodes);
-  const questoes = [];
-  let currentQuestao = '';
-  let capturando = false;
+  function getEnunciados(doc) {
+    const nodes = Array.from(doc.body.childNodes);
+    const questoes = [];
+    let currentQuestao = '';
+    let capturando = false;
 
-  for (let node of nodes) {
-    const text = (node.textContent || '').trim();
+    for (let node of nodes) {
+      const text = (node.textContent || '').trim();
 
-    if (/^@Questão/i.test(text)) {
-      if (capturando && currentQuestao) {
-        questoes.push(currentQuestao.trim());
+      if (/^@Questão/i.test(text)) {
+        if (capturando && currentQuestao) {
+          questoes.push(currentQuestao.trim());
+        }
+        currentQuestao = '';
+        capturando = true;
+        continue;
       }
-      currentQuestao = '';
-      capturando = true;
-      continue;
+
+      if (!capturando) continue;
+
+      if (node.nodeType === 3) {
+        let cleanText = text.trim();
+        if (!cleanText) continue;
+        cleanText = cleanText.replace(/@\w+:.*$/i, '').trim();
+        if (cleanText) currentQuestao += cleanText + '\n';
+      
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        let html = node.innerHTML
+            .split('\n')
+            .filter(line => {
+                const text = line.replace(/<[^>]*>/g, '').trim();
+                return !/^@\w+[:)]/.test(text);
+            })
+            .join('\n');
+
+        if (html.trim()) {
+            const clone = node.cloneNode(true);
+            clone.innerHTML = html;
+            currentQuestao += clone.outerHTML + '\n';
+        }
+      }
     }
 
-    if (!capturando) continue;
-
-    if (node.nodeType === 3) {
-      let cleanText = text.trim();
-      if (!cleanText) continue;
-      cleanText = cleanText.replace(/@\w+:.*$/i, '').trim();
-      if (cleanText) currentQuestao += cleanText + '\n';
-    
-    } else if (node.nodeType === Node.ELEMENT_NODE) {
-    let html = node.innerHTML
-        .split('\n')
-        .filter(line => {
-            const text = line.replace(/<[^>]*>/g, '').trim();
-            return !/^@\w+[:)]/.test(text);
-        })
-        .join('\n');
-
-    if (html.trim()) {
-        const clone = node.cloneNode(true);
-        clone.innerHTML = html;
-        currentQuestao += clone.outerHTML + '\n';
+    if (capturando && currentQuestao) {
+      questoes.push(currentQuestao.trim());
     }
-  }
 
+    return questoes;
   }
-
-  if (capturando && currentQuestao) {
-    questoes.push(currentQuestao.trim());
-  }
-
-  return questoes;
-}
 
 function limparEnunciado(rawHtml) {
   const parser = new DOMParser();
