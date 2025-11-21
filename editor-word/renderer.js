@@ -1,7 +1,6 @@
 const { Editor } = require('@tiptap/core')
-const { clipboard, nativeImage } = require('electron');
+const { clipboard } = require('electron');
 const fs = require("fs");
-const path = require('path')
 const StarterKit = require('@tiptap/starter-kit').default
 const Image = require('@tiptap/extension-image').default
 const Bold = require('@tiptap/extension-bold').default
@@ -23,12 +22,11 @@ const TableCell = require('@tiptap/extension-table-cell').default
 const TableHeader = require('@tiptap/extension-table-header').default
 
 const RectangleShape = require('./Rectangle');
-const { get } = require('http');
 
 const CustomTableCell = TableCell.extend({
   addAttributes() {
     return {
-      ...TableCell.config.addAttributes(), // pega todos os atributos originais
+      ...TableCell.config.addAttributes(),
       style: {
         default: null,
         parseHTML: element => element.getAttribute('style'),
@@ -76,8 +74,6 @@ const CustomParagraph = require('@tiptap/extension-paragraph').default.extend({
   },
 })
 
-
-// Cria o editor com as extensões para formatação estilo Word
 const editor = new Editor({
   element: document.querySelector('#editor'),
   extensions: [
@@ -114,7 +110,7 @@ const editor = new Editor({
     CustomTableCell,
     CustomParagraph,
     TextAlign.configure({
-        types: ['heading', 'paragraph', 'listItem', 'customParagraph'], // aplique para os tipos desejados
+        types: ['heading', 'paragraph', 'listItem', 'customParagraph'],
     }),
   ],
   content: '<p> </p>',
@@ -129,7 +125,6 @@ const editor = new Editor({
   }
 })
 
-// Função para atualizar o estado dos botões da toolbar
 function updateToolbar() {
   const buttons = [
     { id: 'boldBtn', command: () => editor.isActive('bold') },
@@ -185,15 +180,12 @@ document.getElementById('undoBtn').addEventListener('click', () => {
 document.getElementById('redoBtn').addEventListener('click', () => {
   editor.chain().focus().redo().run()
 })
-
 document.getElementById('alignLeftBtn').addEventListener('click', () => {
   editor.chain().focus().setTextAlign('left').run()
 })
-
 document.getElementById('alignCenterBtn').addEventListener('click', () => {
   editor.chain().focus().setTextAlign('center').run()
 })
-
 document.getElementById('alignRightBtn').addEventListener('click', () => {
   editor.chain().focus().setTextAlign('right').run()
 })

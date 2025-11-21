@@ -22,7 +22,7 @@ const app = express()
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 app.use('/converted', cors({ origin: '*' }), express.static(path.resolve('converted')));
-app.use(express.json({ limit: '50mb' }));       // aumenta o limite para 50MB
+app.use(express.json({ limit: '50mb' }));    
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 if (!fs.existsSync(outputDir)) fs.mkdirSync(outputDir);
@@ -47,7 +47,6 @@ app.post('/upload', upload.single('file'), (req, res) => {
       return res.status(500).send('Erro ao converter o arquivo.');
     }
 
-    // Lista arquivos da pasta converted para pegar o nome gerado
     fs.readdir(pastaDestino, (err, files) => {
       if (err) {
         console.error('Erro lendo pasta converted:', err);
@@ -62,14 +61,12 @@ app.post('/upload', upload.single('file'), (req, res) => {
 
       const caminhoHtml = path.join(pastaDestino, `${nomeArquivoSemExt}.html`);
 
-      // Lê o conteúdo do arquivo convertido
       fs.readFile(caminhoHtml, 'utf8', (err, data) => {
         if (err) {
           console.error('Erro ao ler o HTML convertido:', err);
           return res.status(500).send('Erro ao ler o arquivo convertido.');
         }
 
-        // Reescreve os caminhos das imagens no HTML para o caminho público correto
         let servidor = process.env.SERVER_URL || 'http://103.199.187.204:3001';
         const dataComCaminhoCorrigido = data.replace(
           /<img([^>]+)src="([^"]+)"([^>]*)>/g,
@@ -79,12 +76,9 @@ app.post('/upload', upload.single('file'), (req, res) => {
               novoSrc = `${servidor}/converted/${srcPath}`;
             }
 
-            // Verifica se já existe crossorigin na tag
             if (/crossorigin\s*=/i.test(match)) {
-              // Já tem crossorigin, só corrige o src
               return `<img${antesSrc}src="${novoSrc}"${depoisSrc}>`;
             } else {
-              // Não tem crossorigin, adiciona junto do src
               return `<img${antesSrc}src="${novoSrc}" crossorigin="anonymous"${depoisSrc}>`;
             }
           }

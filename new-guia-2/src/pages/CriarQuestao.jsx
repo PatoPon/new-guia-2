@@ -213,7 +213,7 @@ const CreateQuestion = () => {
           <option value="" disabled>Selecione</option>
           {alternativas.map((alt, idx) => (
             <option key={idx} value={alt}>
-              {String.fromCharCode(65 + idx)}) {alt}
+              {String.fromCharCode(65 + idx)} {alt}
             </option>
           ))}
         </select>

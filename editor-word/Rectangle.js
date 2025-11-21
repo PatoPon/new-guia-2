@@ -51,7 +51,6 @@ module.exports = Node.create({
       dom.style.width = `${node.attrs.width}px`
       dom.style.height = `${node.attrs.height}px`
 
-      // Handle de resize
       const resizeHandle = document.createElement('div')
       resizeHandle.style.position = 'absolute'
       resizeHandle.style.right = '0'
@@ -63,7 +62,6 @@ module.exports = Node.create({
       resizeHandle.style.borderRadius = '2px'
       dom.appendChild(resizeHandle)
 
-      // Drag logic
       let isDragging = false
       let isResizing = false
 
