@@ -39,10 +39,9 @@ const DisciplinasETemas = () => {
     setDisciplinas(dataDisciplinas)
 
     setFiltroSeriePorDisciplina(prev => {
-      const atualizados = { ...prev } // copia o estado atual
+      const atualizados = { ...prev } 
 
       dataDisciplinas.forEach(disciplina => {
-        // só atualiza se não tiver valor definido (null, undefined, vazio)
         if (!atualizados[disciplina.id]) {
           atualizados[disciplina.id] = listaSeries[0]?.id || null
         }
@@ -164,7 +163,6 @@ const DisciplinasETemas = () => {
     })
   }
 
-  // Sensores para drag and drop
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {

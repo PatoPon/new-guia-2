@@ -1,5 +1,4 @@
 const QuestionCard = ({ question, selected, onSelect, onDelete }) => {
-  // Parseia as alternativas que estão em string para array
   let alternativasArray = [];
 
   try {

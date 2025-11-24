@@ -44,8 +44,6 @@ const CreateQuestion = () => {
     setIsConfirmModalOpen(false)
   }
 
-
-  // Novos estados para listas
   const [listaSeries, setListaSeries] = useState([])
   const [listaDisciplinas, setListaDisciplinas] = useState([])
   const [listaTemas, setListaTemas] = useState([])
@@ -169,10 +167,8 @@ const CreateQuestion = () => {
         Título:
         <input type="text" value={titulo} onChange={e => setTitulo(e.target.value)} className="w-full p-2 border rounded" />
       </label>
-
         Enunciado:
         <WordEditor />
-
       <fieldset className="mb-4">
         <legend className="font-semibold mb-2">Alternativas:</legend>
         {alternativas.map((alt, idx) => (

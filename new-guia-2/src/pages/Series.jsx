@@ -30,7 +30,6 @@ const Series = () => {
     await fetch(`http://103.199.187.204:3001/api/series/${id}`, {
       method: 'DELETE'
     })
-    // Atualiza lista localmente sem precisar buscar novamente
     setSeries(prev => prev.filter(s => s.id !== id))
   }
 

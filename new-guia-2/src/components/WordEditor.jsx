@@ -4,7 +4,6 @@ import Table from '@tiptap/extension-table';
 import TableRow from '@tiptap/extension-table-row';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
-import Image from '@tiptap/extension-image';
 import TextAlign from '@tiptap/extension-text-align';
 import Document from '@tiptap/extension-document';
 import { useRef, useState } from 'react';
@@ -22,7 +21,7 @@ const WordEditor = () => {
         content: 'block+',
       }),
       StarterKit,
-      CustomImage, // só esse que lida com imagens
+      CustomImage,
       Table.configure({ resizable: true }),
       TableRow,
       TableHeader,
@@ -50,7 +49,6 @@ const WordEditor = () => {
               const src = img.src;
               if (src.startsWith('data:image')) {
                 console.log('Imagem embutida em base64:', src);
-                // Aqui você pode converter para File se quiser
               } else if (src.startsWith('file://')) {
                 console.warn('Imagem local não acessível:', src);
               } else {
@@ -161,7 +159,6 @@ const WordEditor = () => {
 
   return (
     <div className="p-4 max-w-5xl mx-auto space-y-4">
-      {/* Toolbar */}
       <div className="relative inline-block">
         <div className="flex flex-wrap gap-2 mb-4">
           <button onClick={() => editor.chain().focus().toggleBold().run()} className="btn">
@@ -205,12 +202,10 @@ const WordEditor = () => {
         )}
       </div>
 
-      {/* Editor area */}
       <div className="bg-gray-100 rounded-lg shadow border border-gray-300 min-h-[700px] max-h-[85vh] overflow-auto p-4 cursor-text">
         <EditorContent editor={editor} className="outline-none min-h-[600px]" />
       </div>
 
-      {/* Hidden inputs */}
       <input
         type="file"
         accept="image/*"

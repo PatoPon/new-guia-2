@@ -40,14 +40,11 @@ const CustomImage = Image.extend({
                 const clipboardData = event.clipboardData;
                 if (!clipboardData) return false;
 
-                // Se tem conteúdo HTML, deixa o editor lidar com o conteúdo misto (texto+imagem)
                 const htmlData = clipboardData.getData('text/html');
                 if (htmlData && htmlData.length > 0) {
-                    // deixa o editor processar o HTML com texto + imagens inline
                     return false;
                 }
 
-                // Se não tem html, mas tem arquivos de imagem (ex: só imagem no clipboard)
                 const images = Array.from(clipboardData.files || []).filter(file => /image/i.test(file.type));
                 if (images.length === 0) return false;
 

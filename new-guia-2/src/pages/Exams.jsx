@@ -5,8 +5,7 @@ const Exams = () => {
   const [selectedQuestions, setSelectedQuestions] = useState([])
 
   useEffect(() => {
-    // Simula "importação" da seleção de questões da página anterior
-    setSelectedQuestions(sampleQuestions.slice(0, 3)) // ou salvar no contexto
+    setSelectedQuestions(sampleQuestions.slice(0, 3))
   }, [])
 
   return (
